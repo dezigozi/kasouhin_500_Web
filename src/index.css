@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* カスタムアニメーション */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* スクロールバーのカスタマイズ */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* PDF印刷用スタイル */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    overflow: visible !important;
+  }
+
+  /* レイアウトの高さ制限を解除して全コンテンツを展開 */
+  .min-h-screen, .h-screen {
+    min-height: auto !important;
+    height: auto !important;
+  }
+
+  /* メインコンテンツのスクロールを解除 */
+  .overflow-y-auto, .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  /* スクロールバー非表示 */
+  ::-webkit-scrollbar { display: none !important; }
+  * { scrollbar-width: none !important; }
+
+  /* flexレイアウトを縦並びにしてサイドバー非表示後に全幅化 */
+  .flex.select-none {
+    display: block !important;
+  }
+
+  /* テーブルが切れないようにする */
+  table {
+    page-break-inside: auto;
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+  tr { page-break-inside: avoid; }
+
+  /* ダッシュボードテーブルをコンパクト化（縦向きA4対応） */
+  table th,
+  table td {
+    padding: 4px 6px !important;
+    min-width: 0 !important;
+  }
+  table th {
+    font-size: 12px !important;
+  }
+  table td {
+    font-size: 9px !important;
+  }
+  table td .text-lg {
+    font-size: 12px !important;
+  }
+  table td .font-mono {
+    font-size: 10px !important;
+  }
+  table td .text-\[10px\],
+  table td .text-\[9px\] {
+    font-size: 7px !important;
+  }
+
+  /* ピボットテーブルを横幅に収める */
+  .pivot-table {
+    font-size: 9px !important;
+  }
+  .pivot-table th,
+  .pivot-table td {
+    padding: 3px 4px !important;
+    word-break: break-all;
+  }
+  .pivot-table .sticky {
+    position: static !important;
+  }
+
+  /* ピボット: 注文者列 */
+  .pivot-table th:nth-child(1),
+  .pivot-table td:nth-child(1) {
+    width: 10% !important;
+  }
+  /* ピボット: 顧客名列 */
+  .pivot-table th:nth-child(2),
+  .pivot-table td:nth-child(2) {
+    width: 18% !important;
+  }
+
+  /* ピボット: ヘッダー項目名を大きく */
+  .pivot-table th {
+    font-size: 11px !important;
+  }
+
+  /* ピボット: 金額の数字を大きく */
+  .pivot-table td .font-mono {
+    font-size: 12px !important;
+  }
+  .pivot-table td .text-\[9px\] {
+    font-size: 8px !important;
+  }
+
+  /* メインコンテンツのパディングを縮小 */
+  main { padding: 0.25rem !important; }
+
+  /* カードの余白を縮小 */
+  .rounded-\[3rem\] {
+    border-radius: 0.75rem !important;
+    padding: 0 !important;
+  }
+  .rounded-\[3rem\] > .p-8 {
+    padding: 0.4rem 0.5rem !important;
+  }
+}
