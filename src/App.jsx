@@ -203,11 +203,6 @@ const App = () => {
     setActiveView(prev => ({ ...prev, secondName: null, thirdName: null }));
   }, [hierarchyOrder]);
 
-  // テーブルデータ変更時（ドリルダウン時など）にチェックを全選択に初期化
-  useEffect(() => {
-    if (!currentTableData.length) return;
-    setCheckedItems(new Set(currentTableData.map(d => d.name)));
-  }, [activeView.branchName, activeView.secondName, hierarchyOrder, currentTableData]);
 
   // ===== フィルタ済みデータ =====
   const filteredRows = useMemo(() => {
@@ -268,6 +263,13 @@ const App = () => {
     if (!thirdName) return aggregateByOrdererForCustomerByMonth(filteredRows, monthList, branchName, secondName);
     return aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first');
   }, [filteredRows, activeView, hierarchyOrder, months]);
+
+  // テーブルデータ変更時（ドリルダウン時など）にチェックを全選択に初期化
+  useEffect(() => {
+    if (!currentTableData.length) return;
+    setCheckedItems(new Set(currentTableData.map(d => d.name)));
+  }, [activeView.branchName, activeView.secondName, hierarchyOrder, currentTableData]);
+
 
   // ===== ピボットデータ（月別） =====
   const pivotData = useMemo(() => {
