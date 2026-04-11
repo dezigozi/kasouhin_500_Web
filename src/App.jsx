@@ -52,7 +52,7 @@ const PASSWORD = '19627004'; // 指定されたパスワード
 const App = () => {
   // ===== Auth State =====
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('kasouhin_auth') === 'true';
+    return sessionStorage.getItem('kasouhin_auth') === 'true';
   });
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
@@ -263,11 +263,21 @@ const App = () => {
 
   // 直近3ヶ月を計算する関数
   const getLast3Months = useCallback(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1; // 1-12
+    let refDate = new Date();
+    if (rawData && rawData.rows && rawData.rows.length > 0) {
+      let maxTime = 0;
+      rawData.rows.forEach(r => {
+        if (r.calendarYear && r.month) {
+          const t = new Date(r.calendarYear, r.month - 1, 1).getTime();
+          if (t > maxTime) maxTime = t;
+        }
+      });
+      if (maxTime > 0) {
+        refDate = new Date(maxTime);
+      }
+    }
 
-    // 3ヶ月前から今月までを計算
+    const month = refDate.getMonth() + 1; // 1-12
     const months = [];
     for (let i = 2; i >= 0; i--) {
       let m = month - i;
@@ -275,7 +285,7 @@ const App = () => {
       months.push(m);
     }
     return months;
-  }, []);
+  }, [rawData]);
 
   // データ読み込み後に直近3ヶ月を自動設定
   useEffect(() => {
@@ -323,17 +333,32 @@ const App = () => {
     return [...set].sort();
   }, [filteredRows]);
 
-  // 月別集計用の月リスト生成（年またぎ対応）
+  // 月別集計用の月リスト生成（最新データが存在する月を基準にする）
   const months = useMemo(() => {
-    const today = new Date();
+    let refDate = new Date();
+    
+    // 実際に読み込まれたデータの中から、一番新しい年月を探す
+    if (rawData && rawData.rows && rawData.rows.length > 0) {
+      let maxTime = 0;
+      rawData.rows.forEach(r => {
+        if (r.calendarYear && r.month) {
+          const t = new Date(r.calendarYear, r.month - 1, 1).getTime();
+          if (t > maxTime) maxTime = t;
+        }
+      });
+      if (maxTime > 0) {
+        refDate = new Date(maxTime);
+      }
+    }
+
     const monthKeys = [];
     for (let i = 2; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const d = new Date(refDate.getFullYear(), refDate.getMonth() - i, 1);
       monthKeys.push(`${d.getFullYear()}年${d.getMonth() + 1}月`);
     }
     monthKeys.push('計');
     return monthKeys;
-  }, []);
+  }, [rawData]);
 
   // ===== ドリルダウンデータ（月別集計） =====
   const currentTableData = useMemo(() => {
@@ -442,7 +467,7 @@ const App = () => {
     e.preventDefault();
     if (passwordInput === PASSWORD) {
       setIsAuthenticated(true);
-      localStorage.setItem('kasouhin_auth', 'true');
+      sessionStorage.setItem('kasouhin_auth', 'true');
       setAuthError('');
     } else {
       setAuthError('パスワードが間違っています。');
@@ -452,7 +477,7 @@ const App = () => {
   const handleLogout = () => {
     if (confirm('ログアウトしますか？')) {
       setIsAuthenticated(false);
-      localStorage.removeItem('kasouhin_auth');
+      sessionStorage.removeItem('kasouhin_auth');
     }
   };
 
@@ -596,11 +621,11 @@ const App = () => {
           <div className="mb-4 p-3 bg-slate-800 rounded-2xl text-xs space-y-1">
             <div className="flex justify-between text-slate-400">
               <span>ファイル数</span>
-              <span className="font-mono font-bold text-slate-200">{rawData.fileCount}</span>
+              <span className="font-mono font-bold text-slate-200">{rawData.fileCount ?? '—'}</span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>レコード数</span>
-              <span className="font-mono font-bold text-slate-200">{rawData.totalRows.toLocaleString()}</span>
+              <span className="font-mono font-bold text-slate-200">{(rawData.totalRows ?? rawData.rows?.length ?? 0).toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>読込</span>
@@ -771,7 +796,7 @@ const App = () => {
             <div className="flex items-center gap-3">
               <CheckCircle2 className="text-emerald-500" size={20} />
               <span className="font-bold text-emerald-800 text-sm">
-                キャッシュから高速読込（{rawData.totalRows.toLocaleString()}件）
+                キャッシュから高速読込（{(rawData.totalRows ?? rawData.rows?.length ?? 0).toLocaleString()}件）
               </span>
               <span className="text-xs text-emerald-500 font-bold">Excelファイルに変更がある場合は自動で再解析されます</span>
             </div>
@@ -837,7 +862,7 @@ const App = () => {
 };
 
 // ===== 接続ステータスバッジ =====
-const ConnectionBadge = ({ status }) => {
+function ConnectionBadge({ status }) {
   const styles = {
     idle: 'bg-slate-100 text-slate-500 border-slate-200',
     loading: 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse',
@@ -865,7 +890,8 @@ const ConnectionBadge = ({ status }) => {
 };
 
 // ===== ローディング画面 =====
-const LoadingScreen = () => (
+function LoadingScreen() {
+  return (
   <div className="flex flex-col items-center justify-center h-96 animate-fade-in">
     <div className="relative mb-8">
       <div className="w-20 h-20 border-4 border-slate-200 rounded-full" />
@@ -884,16 +910,17 @@ const LoadingScreen = () => (
       ))}
     </div>
   </div>
-);
+  );
+}
 
 // ===== ダッシュボードビュー =====
-const DashboardView = ({
+function DashboardView({
   data, chartData, months, activeView, hierarchyOrder, onHierarchyOrderChange,
   levelInfo, LevelIcon, isLeafLevel,
   checkedItems, onCheckedChange,
   onDrillDown, onBreadcrumb, onSavePdf, onSaveCsv,
   fmtAmt, fmtAmtShort, amountUnit, showProfit, selectedLeaseCo,
-}) => {
+}) {
   const totalRow = useMemo(() => {
     if (!data.length || !months.length) return null;
     const filtered = data.filter(item => checkedItems.has(item.name));
@@ -1303,7 +1330,7 @@ const DashboardView = ({
 };
 
 // ===== ピボットレポートビュー =====
-const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotSort, onSortChange, onSavePdf, onSaveCsv, fmtAmt, amountUnit, showProfit, selectedLeaseCo }) => {
+function PivotView({ data, months, branches, pivotBranch, onBranchChange, pivotSort, onSortChange, onSavePdf, onSaveCsv, fmtAmt, amountUnit, showProfit, selectedLeaseCo }) {
   const titleParts = [
     selectedLeaseCo !== 'ALL' ? selectedLeaseCo : null,
     pivotBranch !== 'ALL' ? pivotBranch : null,

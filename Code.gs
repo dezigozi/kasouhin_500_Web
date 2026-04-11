@@ -1,7 +1,14 @@
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getActiveSheet();
+    
+    // シート名を明示的に指定（getActiveSheet()は毎回違うシートを返す可能性があるため）
+    var SHEET_NAME = '売上済み'; // ← データが入っているシートのタブ名を設定
+    var sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      // 指定シートが見つからない場合は最初のシートを使用
+      sheet = ss.getSheets()[0];
+    }
     
     var offset = parseInt(e.parameter.offset || '0', 10);
     var limit = parseInt(e.parameter.limit || '10000', 10);
@@ -47,11 +54,11 @@ function doGet(e) {
       var customer = String(row[colCustomer] || '');
       var rep = String(row[colRep] || '');
       
-      // カンマ区切りの数値をパース
-      var salesStr = String(row[colSales] || '0').replace(/,/g, '');
+      // カンマや円記号などの数値以外の文字を除去してパース
+      var salesStr = String(row[colSales] || '0').replace(/[^\d.-]/g, '');
       var sales = Number(salesStr) || 0;
       
-      var profitStr = String(row[colProfit] || '0').replace(/,/g, '');
+      var profitStr = String(row[colProfit] || '0').replace(/[^\d.-]/g, '');
       var profit = Number(profitStr) || 0;
       
       var dateRaw = row[colDate];
