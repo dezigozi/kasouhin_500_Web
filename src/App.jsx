@@ -7,8 +7,9 @@ import {
   ArrowUpRight, ArrowDownRight, LayoutDashboard, Database,
   Calendar, FolderOpen, RefreshCcw, CheckCircle2, FileText, FileSpreadsheet,
   ListFilter, AlertCircle, Loader2, XCircle, ChevronLeft, ArrowUpDown, Eye, EyeOff,
-  CheckSquare, Square, Package,
+  CheckSquare, Square, Package, ShieldAlert, Lock, LogOut, Check
 } from 'lucide-react';
+import { getCache, setCache, clearCache } from './utils/db';
 import {
   filterRows, aggregateByBranch, aggregateByOrderer, aggregateByCustomer,
   aggregateByCustomerInBranch, aggregateByOrdererForCustomer,
@@ -46,12 +47,21 @@ function truncateByDisplayWidth(str, maxUnits) {
   }
   return out;
 }
+const PASSWORD = '19627004'; // 指定されたパスワード
 
 const App = () => {
+  // ===== Auth State =====
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('kasouhin_auth') === 'true';
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authError, setAuthError] = useState('');
+
   // ===== State =====
   const [networkPath, setNetworkPath] = useState(DEFAULT_PATH);
   const [rawData, setRawData] = useState(null); // { rows, years, leaseCompanies, fileCount, totalRows }
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ fetchMsg: '', isSyncing: false });
   const [loadError, setLoadError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('idle'); // idle | online | offline | loading
 
@@ -87,34 +97,113 @@ const App = () => {
     return formatCurrency(val);
   }, [amountUnit]);
 
-  // ===== データ読み込み =====
-  const loadData = useCallback(async () => {
+  // ===== データ読み込み (IndexedDB + ページネーション) =====
+  const CACHE_KEY = 'kasouhin_500_data_v1';
+
+  const loadData = useCallback(async (forceRefresh = false) => {
     if (!GAS_URL) {
       loadMockData();
       return;
     }
+
     setIsLoading(true);
     setLoadError(null);
     setConnectionStatus('loading');
+    setLoadingProgress({ fetchMsg: 'キャッシュを確認中...', isSyncing: true });
+
     try {
-      const response = await fetch(GAS_URL);
-      const result = await response.json();
-      
-      if (result.success) {
-        setRawData(result.data);
-        setConnectionStatus('online');
-        setLoadError(null);
+      let currentRows = [];
+      let currentOffset = 0;
+
+      if (forceRefresh) {
+        await clearCache();
       } else {
-        setLoadError(result.error || '不明なエラーが発生しました');
+        const cached = await getCache(CACHE_KEY);
+        if (cached && cached.data) {
+          currentRows = cached.data.rows || [];
+          currentOffset = currentRows.length;
+          
+          const cacheAgeMs = Date.now() - cached.timestamp;
+          const cacheAgeMin = Math.floor(cacheAgeMs / 60000);
+          
+          setRawData({
+            rows: currentRows,
+            years: cached.data.years || [],
+            leaseCompanies: cached.data.leaseCompanies || [],
+            fromCache: true,
+            cacheAgeMsg: `${cacheAgeMin}分前のデータ`,
+          });
+          setConnectionStatus('online'); // 一旦オンライン表示にして裏で同期
+          setLoadingProgress({ fetchMsg: '追加データを確認中...', isSyncing: true });
+        }
+      }
+
+      const limit = 5000;
+      let hasMore = true;
+      let fetchedAny = false;
+
+      while (hasMore) {
+        const url = `${GAS_URL}?offset=${currentOffset}&limit=${limit}`;
+        const response = await fetch(url);
+        const result = await response.json();
+
+        if (result.success) {
+          const newRows = result.data.rows;
+          if (newRows.length > 0) {
+            currentRows = [...currentRows, ...newRows];
+            currentOffset += newRows.length;
+            fetchedAny = true;
+          }
+
+          const totalRowsInSheet = result.data.totalRows;
+          if (currentOffset >= totalRowsInSheet || newRows.length === 0) {
+            hasMore = false;
+          } else {
+            setLoadingProgress({ fetchMsg: `${currentOffset} / ${totalRowsInSheet} 件を同期中...`, isSyncing: true });
+          }
+        } else {
+          throw new Error(result.error);
+        }
+      }
+
+      if (fetchedAny || forceRefresh) {
+        // 新しい年とリース会社を再計算
+        const yearsSet = new Set();
+        const leaseSet = new Set();
+        currentRows.forEach(r => {
+          if (r.fiscalYear) yearsSet.add(r.fiscalYear);
+          if (r.leaseCompany) leaseSet.add(r.leaseCompany);
+        });
+
+        const finalData = {
+          rows: currentRows,
+          years: Array.from(yearsSet).sort((a,b)=>a-b),
+          leaseCompanies: Array.from(leaseSet).sort()
+        };
+
+        await setCache(CACHE_KEY, { data: finalData, timestamp: Date.now() });
+        setRawData({ ...finalData, fromCache: false, cacheAgeMsg: '最新' });
+      } else {
+        // 更新なし
+        if (rawData) {
+          setRawData(prev => ({ ...prev, cacheAgeMsg: '最新' }));
+        }
+      }
+
+      setConnectionStatus('online');
+      setLoadError(null);
+    } catch (err) {
+      if (rawData) {
+        setLoadError('追加データの取得に失敗しました。キャッシュデータを表示中です。');
+      } else {
+        setLoadError('データの取得に失敗しました。ネットワーク環境をご確認ください。');
         setConnectionStatus('offline');
       }
-    } catch (err) {
-      setLoadError('データの取得に失敗しました。URLやネットワーク環境をご確認ください。');
-      setConnectionStatus('offline');
     } finally {
       setIsLoading(false);
+      setLoadingProgress({ fetchMsg: '', isSyncing: false });
     }
-  }, []);
+  }, [rawData]);
 
   // モックデータ（開発・デモ用）
   const loadMockData = useCallback(() => {
@@ -344,8 +433,65 @@ const App = () => {
   };
 
   const handleRefresh = () => {
-    loadData(); // 強制リフレッシュ（キャッシュがないため再取得）
+    if (confirm('ローカルのキャッシュデータを一旦削除し、最初から全件取得し直しますか？\n(過去のデータ修正を反映したい場合に実行してください)')) {
+      loadData(true); // 強制リフレッシュ
+    }
   };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput === PASSWORD) {
+      setIsAuthenticated(true);
+      localStorage.setItem('kasouhin_auth', 'true');
+      setAuthError('');
+    } else {
+      setAuthError('パスワードが間違っています。');
+    }
+  };
+
+  const handleLogout = () => {
+    if (confirm('ログアウトしますか？')) {
+      setIsAuthenticated(false);
+      localStorage.removeItem('kasouhin_auth');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-800 font-sans">
+        <div className="bg-white p-8 mb-40 rounded-3xl shadow-xl w-full max-w-md border border-slate-100">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
+              <Lock size={32} />
+            </div>
+            <h1 className="text-2xl font-black text-slate-800 text-center tracking-tight">架装品 500<br/>実績レポート</h1>
+            <p className="text-sm text-slate-500 mt-2 font-medium text-center">機密情報が含まれるためパスワードが必要です</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">パスワード</label>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-base rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 block p-4 transition-all font-medium placeholder-slate-400 font-mono tracking-widest"
+                placeholder="パスワードを入力..."
+                autoFocus
+              />
+              {authError && <p className="text-red-500 text-sm mt-2 ml-1 font-bold flex items-center gap-1"><AlertCircle size={14}/>{authError}</p>}
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-slate-900 text-white font-black py-4 px-6 rounded-2xl hover:bg-blue-600 transition-colors shadow-lg active:scale-[0.98] tracking-widest"
+            >
+              ログイン
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const handleSaveCsv = async () => {
     if (!pivotData.length) return;
@@ -479,25 +625,47 @@ const App = () => {
                   架装品 500受注レポート
                 </h2>
                 <ConnectionBadge status={connectionStatus} />
+                <button
+                  onClick={handleLogout}
+                  className="ml-4 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-lg transition-colors"
+                  title="ログアウト"
+                >
+                  <LogOut size={14} /> ログアウト
+                </button>
               </div>
-              <div className="flex items-center gap-2 text-slate-400 font-bold text-sm bg-slate-100 w-fit px-3 py-1 rounded-lg">
-                <FolderOpen size={14} /> {networkPath}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-slate-400 font-bold text-sm bg-slate-100 w-fit px-3 py-1 rounded-lg">
+                  <FolderOpen size={14} /> {networkPath}
+                </div>
+                {rawData?.cacheAgeMsg && (
+                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs bg-emerald-50 w-fit px-3 py-1.5 rounded-lg border border-emerald-100">
+                    <Check size={14} /> データ状態: {rawData.cacheAgeMsg}
+                  </div>
+                )}
               </div>
             </div>
 
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className={`group flex items-center gap-2 px-8 py-4 rounded-3xl bg-slate-900 text-white font-black text-sm shadow-2xl hover:bg-red-600 transition-all duration-300 active:scale-95 disabled:opacity-50 ${
-                isLoading ? 'animate-pulse' : ''
-              }`}
-            >
-              <RefreshCcw
-                size={18}
-                className={isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}
-              />
-              {isLoading ? 'データを読み込んでいます...' : '最新データに更新'}
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={handleRefresh}
+                disabled={isLoading}
+                className={`group flex items-center gap-2 px-8 py-4 rounded-3xl bg-slate-900 text-white font-black text-sm shadow-2xl hover:bg-red-600 transition-all duration-300 active:scale-95 disabled:opacity-50 ${
+                  isLoading ? 'animate-pulse' : ''
+                }`}
+              >
+                <RefreshCcw
+                  size={18}
+                  className={isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}
+                />
+                {isLoading ? '完全同期(全件再取得)' : '完全同期(全件再取得)'}
+              </button>
+              {loadingProgress.isSyncing && (
+                <div className="text-xs font-bold text-blue-600 animate-pulse flex items-center gap-1">
+                  <RefreshCcw size={12} className="animate-spin" />
+                  {loadingProgress.fetchMsg}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Filters Bar */}

@@ -1,54 +1,63 @@
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getActiveSheet(); // または特定のシート名: ss.getSheetByName('実績データ');
-    var data = sheet.getDataRange().getValues();
+    var sheet = ss.getActiveSheet();
     
-    if (data.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({ success: true, data: { rows: [], years: [], leaseCompanies: [] } }))
-        .setMimeType(ContentService.MimeType.JSON);
+    var offset = parseInt(e.parameter.offset || '0', 10);
+    var limit = parseInt(e.parameter.limit || '10000', 10);
+    
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    var totalDataRows = Math.max(0, lastRow - 1);
+    
+    if (lastRow <= 1 || offset >= totalDataRows) {
+      return ContentService.createTextOutput(JSON.stringify({ 
+        success: true, 
+        data: { rows: [], years: [], leaseCompanies: [], totalRows: totalDataRows, offset: offset } 
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    var headers = data[0];
+    // ユーザー指定のハードコーディング列インデックス
+    var colLease = 11; // L列 (略称)
+    var colBranch = 12; // M列 (部店)
+    var colOrderer = 3; // D列 (得意先担当者名)
+    var colCustomer = 4; // E列 (顧客名_漢字)
+    var colRep = 2;     // C列 (得意先CD)
+    var colSales = 9;   // J列 (単価/売上)
+    var colProfit = 13; // N列 (粗利)
+    var colDate = 10;   // K列 (登録日)
+    var colProductCode = 6; // G列 (品番)
+    var colProductName = 7; // H列 (商品名)
+    var colQuantity = 8;    // I列 (受注数量)
+
+    var startRow = offset + 2; // ヘッダー分(+1)と、1-indexed分(+1)
+    var numRowsToFetch = Math.min(limit, lastRow - startRow + 1);
     
-    // ヘッダー名から列インデックスを探す（見つからなければエラーを防ぐために設定）
-    var getIdx = function(names) {
-      for (var i = 0; i < names.length; i++) {
-        var idx = headers.indexOf(names[i]);
-        if (idx !== -1) return idx;
-      }
-      return -1;
-    };
-    
-    var colLease = getIdx(['略称', 'リース会社', 'リース', '架装実績']);
-    var colBranch = getIdx(['部店', '部店名', '支店']);
-    var colOrderer = getIdx(['得意先担当者名', '得意先担当者', '担当者名', '注文社名', '注文者名']);
-    var colCustomer = getIdx(['顧客名_漢字', '顧客名', '顧客']);
-    var colRep = getIdx(['得意先名', '得意先CD']); // 必要に応じて変更
-    var colSales = getIdx(['単価']);
-    var colProfit = getIdx(['粗利']);
-    var colDate = getIdx(['登録日', '納車予定日', '納品日']);
-    var colProductCode = getIdx(['品番']);
-    var colProductName = getIdx(['商品名']);
-    var colQuantity = getIdx(['受注数量', '数量']);
+    var data = sheet.getRange(startRow, 1, numRowsToFetch, lastCol).getValues();
     
     var rows = [];
     var yearsSet = {};
     var leaseSet = {};
     
-    for (var i = 1; i < data.length; i++) {
+    for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      var lease = colLease >= 0 ? String(row[colLease] || '') : '';
-      var branch = colBranch >= 0 ? String(row[colBranch] || '') : '';
-      var orderer = colOrderer >= 0 ? String(row[colOrderer] || '') : '';
-      var customer = colCustomer >= 0 ? String(row[colCustomer] || '') : '';
-      var rep = colRep >= 0 ? String(row[colRep] || '') : '';
-      var sales = colSales >= 0 ? Number(row[colSales]) || 0 : 0;
-      var profit = colProfit >= 0 ? Number(row[colProfit]) || 0 : 0;
-      var dateRaw = colDate >= 0 ? row[colDate] : null;
-      var productCode = colProductCode >= 0 ? String(row[colProductCode] || '') : '';
-      var productName = colProductName >= 0 ? String(row[colProductName] || '') : '';
-      var quantity = colQuantity >= 0 ? Number(row[colQuantity]) || 0 : 0;
+      var lease = String(row[colLease] || '');
+      var branch = String(row[colBranch] || '');
+      var orderer = String(row[colOrderer] || '');
+      var customer = String(row[colCustomer] || '');
+      var rep = String(row[colRep] || '');
+      
+      // カンマ区切りの数値をパース
+      var salesStr = String(row[colSales] || '0').replace(/,/g, '');
+      var sales = Number(salesStr) || 0;
+      
+      var profitStr = String(row[colProfit] || '0').replace(/,/g, '');
+      var profit = Number(profitStr) || 0;
+      
+      var dateRaw = row[colDate];
+      var productCode = String(row[colProductCode] || '');
+      var productName = String(row[colProductName] || '');
+      var quantity = Number(row[colQuantity]) || 0;
       
       // 空データスキップ
       if (!lease && !branch && !orderer && !customer && sales === 0) continue;
@@ -94,12 +103,11 @@ function doGet(e) {
         rows: rows,
         years: years,
         leaseCompanies: leaseCompanies,
-        totalRows: rows.length,
-        fileCount: 1 // スプレッドシート1つという意味で
+        totalRows: totalDataRows,
+        offset: offset,
       }
     };
     
-    // CORS対応
     var output = ContentService.createTextOutput(JSON.stringify(responseData));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
@@ -109,3 +117,4 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
