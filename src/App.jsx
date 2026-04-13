@@ -1337,7 +1337,7 @@ const ProductSearchView = ({ rows }) => {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pre' | 'shipped'
   const [drillLease, setDrillLease] = useState(null);
   const [drillBranch, setDrillBranch] = useState(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const searchRef = useRef(null);
 
   // 入力に部分一致する品番候補（全データから）
@@ -1356,21 +1356,8 @@ const ProductSearchView = ({ rows }) => {
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [rows, searchInput]);
 
-  // ドロップダウン表示制御
-  useEffect(() => {
-    setIsDropdownOpen(matchingCodes.length > 0 && searchInput.trim() !== '');
-  }, [matchingCodes, searchInput]);
-
-  // 外側クリックでドロップダウンを閉じる
-  useEffect(() => {
-    const handler = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  // フォーカスがあり候補があれば表示（コピペにも確実対応）
+  const isDropdownOpen = isInputFocused && matchingCodes.length > 0 && searchInput.trim() !== '';
 
   const toggleCode = (code) => {
     setSelectedCodes(prev => {
@@ -1585,11 +1572,13 @@ const ProductSearchView = ({ rows }) => {
                 type="text"
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setTimeout(() => setIsInputFocused(false), 180)}
                 placeholder="例：DRV-MR（部分一致で候補が表示されます）"
                 className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 font-bold"
               />
               {searchInput && (
-                <button onClick={() => { setSearchInput(''); setIsDropdownOpen(false); }} className="text-slate-400 hover:text-slate-600 ml-1">
+                <button onClick={() => { setSearchInput(''); setIsInputFocused(false); }} className="text-slate-400 hover:text-slate-600 ml-1">
                   <X size={14} />
                 </button>
               )}
