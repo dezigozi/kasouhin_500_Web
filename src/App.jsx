@@ -100,7 +100,7 @@ const App = () => {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerSearchResults, setCustomerSearchResults] = useState([]);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const printRef = useRef(null);
 
@@ -569,8 +569,8 @@ const App = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 select-none">
 
-      {/* ===== Mobile Top Bar ===== */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900 text-white flex items-center justify-between px-4 py-3 no-print">
+      {/* ===== Top Bar（全サイズ表示） ===== */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-slate-900 text-white flex items-center justify-between px-4 py-3 no-print">
         <div className="flex items-center gap-2">
           <div className="bg-red-500 p-1.5 rounded-lg"><Database size={18} /></div>
           <span className="font-black text-sm tracking-tight">{REPORT_TITLE}</span>
@@ -580,13 +580,13 @@ const App = () => {
         </button>
       </div>
 
-      {/* ===== Sidebar Overlay (mobile) ===== */}
+      {/* ===== Sidebar Overlay（全サイズ・外タップで閉じる） ===== */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-30" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* ===== Sidebar ===== */}
-      <aside className={`fixed top-0 left-0 w-64 bg-slate-900 text-white flex flex-col p-6 h-screen shadow-2xl z-40 no-print transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <aside className={`fixed top-0 left-0 w-64 bg-slate-900 text-white flex flex-col p-6 h-screen shadow-2xl z-40 no-print transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between mb-10 px-2">
           <div className="flex items-center gap-3">
             <div className="bg-red-500 p-2 rounded-xl text-white shadow-lg shadow-red-500/20">
@@ -596,7 +596,7 @@ const App = () => {
               Special<br/>Sales Report
             </h1>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 transition-colors">
+          <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -685,7 +685,7 @@ const App = () => {
       </aside>
 
       {/* ===== Main Content ===== */}
-      <main className="md:ml-64 pt-14 md:pt-0 min-h-screen p-4 md:p-8 overflow-y-auto custom-scrollbar" ref={printRef}>
+      <main className="pt-14 min-h-screen p-4 md:p-8 overflow-y-auto custom-scrollbar" ref={printRef}>
         {/* Header */}
         <header className="mb-6 md:mb-10 space-y-4 md:space-y-8 no-print">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
