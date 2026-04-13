@@ -346,8 +346,14 @@ const App = () => {
     const rows = pivotBranch === 'ALL' ? filteredRows : filteredRows.filter(r => r.branch === pivotBranch);
     const data = generatePivotDataByMonth(rows, monthList);
     const latestMonth = monthList[monthList.length - 1];
+    // 全月合計を返すヘルパー
+    const rowTotal = (r, field) => monthList.reduce((s, m) => s + (r[field][m] || 0), 0);
     if (pivotSort === 'sales') {
-      data.sort((a, b) => (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0));
+      data.sort((a, b) => rowTotal(b, 'sales') - rowTotal(a, 'sales'));
+    } else if (pivotSort === 'profit') {
+      data.sort((a, b) => rowTotal(b, 'profit') - rowTotal(a, 'profit'));
+    } else if (pivotSort === 'lease') {
+      data.sort((a, b) => (a.lease || '').localeCompare(b.lease || '', 'ja'));
     } else if (pivotSort === 'orderer') {
       const totals = {};
       data.forEach(r => { totals[r.orderer || ''] = (totals[r.orderer || ''] || 0) + (r.sales[latestMonth] || 0); });
@@ -396,14 +402,63 @@ const App = () => {
   const handleRefresh = () => loadData(true);
 
   const handleSaveCsv = () => {
-    if (!pivotData.length) return;
-    const monthList = months.slice(0, -1);
-    const csv = generateCsvContentByMonth(pivotData, monthList);
+    let csv = '';
+    let filename = '';
+
+    if (viewMode === 'dashboard') {
+      // ダッシュボード: リース会社・部店・担当者・ユーザー・品番・受注年月・売上・粗利
+      const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const headers = ['リース会社', '部店', '担当者', 'ユーザー', '品番', '受注年月', '売上', '粗利'];
+
+      // (leaseCompany, branch, ordererName, customerName, productCode, yearMonth) でグループ化
+      const map = {};
+      filteredRows.forEach(r => {
+        if (!r.calendarYear || !r.month) return;
+        const ym = `${r.calendarYear}年${r.month}月`;
+        const key = [r.leaseCompany, r.branch, r.ordererName, r.customerName, r.productCode, ym].join('|');
+        if (!map[key]) {
+          map[key] = {
+            lease: r.leaseCompany || '', branch: r.branch || '',
+            orderer: r.ordererName || '', customer: r.customerName || '',
+            productCode: r.productCode || '', ym,
+            ymSort: r.calendarYear * 100 + r.month,
+            sales: 0, profit: 0,
+          };
+        }
+        map[key].sales  += Number(r.sales)  || 0;
+        map[key].profit += Number(r.profit) || 0;
+      });
+
+      const rows = Object.values(map).sort((a, b) =>
+        a.lease.localeCompare(b.lease, 'ja') ||
+        a.branch.localeCompare(b.branch, 'ja') ||
+        a.orderer.localeCompare(b.orderer, 'ja') ||
+        a.customer.localeCompare(b.customer, 'ja') ||
+        a.ymSort - b.ymSort
+      );
+
+      const lines = [headers.map(q).join(',')];
+      rows.forEach(r => {
+        lines.push([
+          q(r.lease), q(r.branch), q(r.orderer), q(r.customer),
+          q(r.productCode), q(r.ym), r.sales, r.profit,
+        ].join(','));
+      });
+      csv = lines.join('\r\n');
+      filename = `分析ダッシュボード_${new Date().toISOString().slice(0, 10)}.csv`;
+    } else {
+      // 一括網羅レポート
+      if (!pivotData.length) return;
+      const monthList = months.slice(0, -1);
+      csv = generateCsvContentByMonth(pivotData, monthList);
+      filename = `一括網羅レポート_${new Date().toISOString().slice(0, 10)}.csv`;
+    }
+
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `リース実績レポート_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -569,6 +624,17 @@ const App = () => {
             <ListFilter size={20} />
             <span className="font-black text-sm tracking-tight">一括網羅レポート</span>
           </button>
+          <button
+            onClick={() => { setViewMode('product_search'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 w-full p-4 rounded-2xl transition-all duration-300 ${
+              viewMode === 'product_search'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 scale-105'
+                : 'text-slate-400 hover:bg-slate-800'
+            }`}
+          >
+            <Package size={20} />
+            <span className="font-black text-sm tracking-tight">品番検索レポート</span>
+          </button>
 
           <div className="pt-8 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
             Reports Export
@@ -576,9 +642,11 @@ const App = () => {
           <button onClick={handleSavePdf} className="flex items-center gap-3 w-full p-4 rounded-2xl text-slate-400 hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700">
             <div className="flex items-center gap-3 italic font-bold text-sm text-slate-200"><FileText size={18} /> PDF Export</div>
           </button>
-          <button onClick={handleSaveCsv} className="flex items-center gap-3 w-full p-4 rounded-2xl text-slate-400 hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700">
-            <div className="flex items-center gap-3 italic font-bold text-sm text-slate-200"><FileSpreadsheet size={18} /> CSV Export</div>
-          </button>
+          {viewMode !== 'product_search' && (
+            <button onClick={handleSaveCsv} className="flex items-center gap-3 w-full p-4 rounded-2xl text-slate-400 hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700">
+              <div className="flex items-center gap-3 italic font-bold text-sm text-slate-200"><FileSpreadsheet size={18} /> CSV Export</div>
+            </button>
+          )}
         </nav>
 
         {/* Stats */}
@@ -783,6 +851,8 @@ const App = () => {
                 showProfit={showProfit} selectedLeaseCo={selectedLeaseCo}
                 customerViewMode={customerViewMode} onCustomerViewModeChange={setCustomerViewMode}
               />
+            ) : viewMode === 'product_search' ? (
+              <ProductSearchView rows={filteredRows} />
             ) : (
               <PivotView
                 data={pivotData} months={months} branches={branches}
@@ -1170,7 +1240,12 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
         <table className="w-full text-left border-collapse pivot-table">
           <thead>
             <tr className="bg-slate-900 text-xl font-black text-white tracking-wide text-center">
-              <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[120px] sticky left-0 bg-slate-900 z-10">
+              <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[110px] sticky left-0 bg-slate-900 z-10">
+                <button onClick={() => onSortChange('lease')} className={`w-full flex items-center justify-center gap-1 transition-colors ${pivotSort==='lease'?'text-red-300':'text-white hover:text-red-300'}`}>
+                  リース会社 {pivotSort==='lease'&&<ArrowUpDown size={12}/>}
+                </button>
+              </th>
+              <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[120px]">
                 <button onClick={() => onSortChange('orderer')} className={`w-full flex items-center justify-center gap-1 transition-colors ${pivotSort==='orderer'?'text-red-300':'text-white hover:text-red-300'}`}>
                   注文者 {pivotSort==='orderer'&&<ArrowUpDown size={12}/>}
                 </button>
@@ -1180,9 +1255,22 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
                   顧客名 {pivotSort==='customer'&&<ArrowUpDown size={12}/>}
                 </button>
               </th>
-              {months.map(month => (
-                <th key={month} className="px-3 py-4 border-l border-slate-800 min-w-[120px] whitespace-nowrap">{month}</th>
-              ))}
+              {months.map(month =>
+                month === '計' ? (
+                  <th key={month} className="px-3 py-4 border-l border-slate-700 bg-slate-800 min-w-[130px]">
+                    <div className="flex flex-col gap-1 items-center">
+                      <button onClick={() => onSortChange('sales')} className={`flex items-center gap-1 text-xs font-black transition-colors ${pivotSort==='sales'?'text-red-300':'text-slate-300 hover:text-red-300'}`}>
+                        計（売上）{pivotSort==='sales'&&<ArrowUpDown size={11}/>}
+                      </button>
+                      <button onClick={() => onSortChange('profit')} className={`flex items-center gap-1 text-[11px] font-black transition-colors ${pivotSort==='profit'?'text-emerald-300':'text-slate-400 hover:text-emerald-300'}`}>
+                        計（粗利）{pivotSort==='profit'&&<ArrowUpDown size={11}/>}
+                      </button>
+                    </div>
+                  </th>
+                ) : (
+                  <th key={month} className="px-3 py-4 border-l border-slate-800 min-w-[120px] whitespace-nowrap">{month}</th>
+                )
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-300">
@@ -1191,7 +1279,8 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
             ) : (
               data.map((row, idx) => (
                 <tr key={idx} className="hover:bg-red-50/50 transition-colors">
-                  <td className="px-4 py-3 border-r border-slate-300 sticky left-0 bg-white z-10 font-black text-slate-800 text-sm">{row.orderer}</td>
+                  <td className="px-4 py-3 border-r border-slate-300 sticky left-0 bg-white z-10 font-black text-slate-800 text-sm whitespace-nowrap">{row.lease}</td>
+                  <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm">{row.orderer}</td>
                   <td className="px-4 py-3 border-r border-slate-300">
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0" />
@@ -1238,6 +1327,528 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
       </div>
     </div>
   </div>
+  );
+};
+
+// ===== 品番検索レポートビュー =====
+const ProductSearchView = ({ rows }) => {
+  const [searchInput, setSearchInput] = useState('');
+  const [selectedCodes, setSelectedCodes] = useState(new Set());
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pre' | 'shipped'
+  const [drillLease, setDrillLease] = useState(null);
+  const [drillBranch, setDrillBranch] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const searchRef = useRef(null);
+
+  // 入力に部分一致する品番候補（全データから）
+  const matchingCodes = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return [];
+    const map = {};
+    rows.forEach(r => {
+      if (r.productCode != null) {
+        const code = r.productCode.toString();
+        if (code.toLowerCase().includes(q)) {
+          if (!map[code]) map[code] = r.productName || '';
+        }
+      }
+    });
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [rows, searchInput]);
+
+  // ドロップダウン表示制御
+  useEffect(() => {
+    setIsDropdownOpen(matchingCodes.length > 0 && searchInput.trim() !== '');
+  }, [matchingCodes, searchInput]);
+
+  // 外側クリックでドロップダウンを閉じる
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggleCode = (code) => {
+    setSelectedCodes(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+    setDrillLease(null);
+    setDrillBranch(null);
+  };
+
+  const removeCode = (code) => {
+    setSelectedCodes(prev => {
+      const next = new Set(prev);
+      next.delete(code);
+      return next;
+    });
+    setDrillLease(null);
+    setDrillBranch(null);
+  };
+
+  const selectAll = () => {
+    const allCodes = new Set([...selectedCodes, ...matchingCodes.map(([c]) => c)]);
+    setSelectedCodes(allCodes);
+    setDrillLease(null);
+    setDrillBranch(null);
+  };
+
+  // ステータス判定
+  const matchStatus = (r) => {
+    const s = Number(r.status);
+    if (statusFilter === 'pre')     return s === 4;
+    if (statusFilter === 'shipped') return s === 5 || s === 6;
+    return true;
+  };
+
+  // 品番＋ステータスでフィルタ済みの行
+  const productRows = useMemo(() => {
+    if (selectedCodes.size === 0) return [];
+    return rows.filter(r =>
+      r.productCode != null &&
+      selectedCodes.has(r.productCode.toString()) &&
+      matchStatus(r)
+    );
+  }, [rows, selectedCodes, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 選択品番の品名マップ
+  const productNameMap = useMemo(() => {
+    const m = {};
+    rows.forEach(r => {
+      if (r.productCode != null && r.productName) {
+        m[r.productCode.toString()] = r.productName;
+      }
+    });
+    return m;
+  }, [rows]);
+
+  // 納車年月の列一覧（古い順→左）
+  const deliveryMonths = useMemo(() => {
+    const map = {};
+    productRows.forEach(r => {
+      if (r.deliveryYM && r.deliverySortKey != null) {
+        map[r.deliveryYM] = r.deliverySortKey;
+      }
+    });
+    return Object.keys(map).sort((a, b) => map[a] - map[b]);
+  }, [productRows]);
+
+  const isLeaseLevel    = !drillLease;
+  const isBranchLevel   = !!drillLease && !drillBranch;
+  const isCustomerLevel = !!drillLease && !!drillBranch;
+  const levelLabel = isCustomerLevel ? '顧客名' : isBranchLevel ? '部店名' : 'リース会社';
+
+  // 年グループ（"25年" → ["25年10月", ...]）
+  const yearGroups = useMemo(() => {
+    const map = new Map();
+    deliveryMonths.forEach(ym => {
+      const year = ym.replace(/\d+月$/, '');
+      if (!map.has(year)) map.set(year, []);
+      map.get(year).push(ym);
+    });
+    return [...map.entries()].map(([year, months]) => ({ year, months }));
+  }, [deliveryMonths]);
+
+  const [expandedYears, setExpandedYears] = useState(new Set());
+  const toggleYear = (year) => {
+    setExpandedYears(prev => {
+      const next = new Set(prev);
+      next.has(year) ? next.delete(year) : next.add(year);
+      return next;
+    });
+  };
+
+  // yearGroups変化時（品番変更）はリセット
+  useEffect(() => { setExpandedYears(new Set()); }, [yearGroups]);
+
+  // 集計
+  const displayRows = useMemo(() => {
+    let filtered = productRows;
+    if (drillLease)  filtered = filtered.filter(r => r.leaseCompany === drillLease);
+    if (drillBranch) filtered = filtered.filter(r => r.branch === drillBranch);
+
+    const groupKey = isCustomerLevel ? 'customerName' : isBranchLevel ? 'branch' : 'leaseCompany';
+    const map = {};
+    filtered.forEach(r => {
+      const key = r[groupKey] || '(未分類)';
+      if (!map[key]) map[key] = { name: key, quantity: {}, orderers: new Set() };
+      if (r.deliveryYM) {
+        map[key].quantity[r.deliveryYM] = (map[key].quantity[r.deliveryYM] || 0) + (Number(r.quantity) || 0);
+      }
+      if (isCustomerLevel && r.ordererName) map[key].orderers.add(r.ordererName);
+    });
+
+    return Object.values(map).map(item => ({
+      ...item,
+      ordererStr: [...item.orderers].join('・'),
+      total: Object.values(item.quantity).reduce((s, v) => s + v, 0),
+    })).sort((a, b) => b.total - a.total);
+  }, [productRows, drillLease, drillBranch, isCustomerLevel, isBranchLevel]);
+
+  const handleDrill = (name) => {
+    if (isCustomerLevel) return;
+    if (isLeaseLevel) setDrillLease(name);
+    else setDrillBranch(name);
+  };
+
+  const totalQty = displayRows.reduce((s, r) => s + r.total, 0);
+
+  // CSV エクスポート（選択品番全体・出荷区分列付き）
+  const handleExportCsv = () => {
+    if (selectedCodes.size === 0) return;
+
+    // ステータスフィルター無視で全データを出力（出荷区分列で判別）
+    const exportSrc = rows.filter(r =>
+      r.productCode != null && selectedCodes.has(r.productCode.toString())
+    );
+
+    // 納車年月→ソートキー マップ
+    const ymSortKey = {};
+    exportSrc.forEach(r => {
+      if (r.deliveryYM && r.deliverySortKey != null) ymSortKey[r.deliveryYM] = r.deliverySortKey;
+    });
+
+    // 出荷区分ラベル
+    const shippingLabel = (s) => {
+      const n = Number(s);
+      if (n === 4) return '出荷前';
+      if (n === 5 || n === 6) return '出荷済み';
+      return 'その他';
+    };
+
+    // 集計キーでグループ化（伝票番号は明細ごとに保持）
+    const details = [];
+    exportSrc.forEach(r => {
+      const sl = shippingLabel(r.status);
+      details.push({
+        productCode:    r.productCode    || '',
+        leaseCompany:   r.leaseCompany   || '',
+        branch:         r.branch         || '',
+        customerName:   r.customerName   || '',
+        ordererName:    r.ordererName    || '',
+        deliveryYM:     r.deliveryYM     || '',
+        deliverySortKey: r.deliverySortKey || 0,
+        shippingLabel:  sl,
+        quantity:       Number(r.quantity) || 0,
+        documentNumber: r.documentNumber || '',
+        car:            r.car || '',
+      });
+    });
+
+    const data = details.sort((a, b) =>
+      a.leaseCompany.localeCompare(b.leaseCompany, 'ja') ||
+      a.branch.localeCompare(b.branch, 'ja') ||
+      a.customerName.localeCompare(b.customerName, 'ja') ||
+      a.ordererName.localeCompare(b.ordererName, 'ja') ||
+      a.deliverySortKey - b.deliverySortKey
+    );
+
+    const headers = ['品番', 'リース会社', '部店', '顧客', '担当者', '納車年月', '出荷区分', '受注数', '伝票番号', '車種'];
+    const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const csvRows = [
+      headers.map(q).join(','),
+      ...data.map(r => [
+        r.productCode, r.leaseCompany, r.branch,
+        r.customerName, r.ordererName, r.deliveryYM,
+        r.shippingLabel, r.quantity, r.documentNumber, r.car,
+      ].map(q).join(',')),
+    ];
+
+    const blob = new Blob(['\uFEFF' + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `品番受注明細_${[...selectedCodes].join('-')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      {/* 検索＋ステータスフィルターパネル */}
+      <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-slate-100 space-y-5">
+
+        {/* 品番あいまい検索 */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">品番で検索（部分一致・複数選択可）</label>
+          <div className="relative" ref={searchRef}>
+            <div className="flex items-center bg-slate-50 border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
+              <Package size={16} className="text-slate-400 mr-2 flex-shrink-0" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                placeholder="例：DRV-MR（部分一致で候補が表示されます）"
+                className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 font-bold"
+              />
+              {searchInput && (
+                <button onClick={() => { setSearchInput(''); setIsDropdownOpen(false); }} className="text-slate-400 hover:text-slate-600 ml-1">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* 候補ドロップダウン */}
+            {isDropdownOpen && matchingCodes.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 bg-slate-50">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{matchingCodes.length} 件一致</span>
+                  <button onClick={selectAll} className="text-[11px] font-black text-red-600 hover:text-red-700 flex items-center gap-1">
+                    <CheckSquare size={12} /> 全て追加
+                  </button>
+                </div>
+                <div className="max-h-56 overflow-y-auto custom-scrollbar">
+                  {matchingCodes.map(([code, name]) => (
+                    <button
+                      key={code}
+                      onClick={() => toggleCode(code)}
+                      className="w-full px-4 py-2.5 text-left hover:bg-red-50 border-b border-slate-50 last:border-b-0 transition-colors flex items-center gap-3 group"
+                    >
+                      {selectedCodes.has(code)
+                        ? <CheckSquare size={15} className="text-emerald-500 flex-shrink-0" />
+                        : <Square size={15} className="text-slate-300 group-hover:text-slate-400 flex-shrink-0" />
+                      }
+                      <div>
+                        <div className="font-black text-slate-800 text-sm group-hover:text-red-600">{code}</div>
+                        {name && <div className="text-[11px] text-slate-400 font-bold">{name}</div>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 選択中の品番タグ */}
+        {selectedCodes.size > 0 && (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">選択中の品番</label>
+            <div className="flex flex-wrap gap-2">
+              {[...selectedCodes].map(code => (
+                <div key={code} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl">
+                  <span className="text-xs font-black text-red-700">{code}</span>
+                  {productNameMap[code] && <span className="text-[10px] text-red-400 font-bold">{productNameMap[code]}</span>}
+                  <button onClick={() => removeCode(code)} className="text-red-400 hover:text-red-600 ml-0.5">
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => { setSelectedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
+                className="px-3 py-1.5 text-[11px] font-black text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                全解除
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ステータスフィルター */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">ステータス</label>
+          <div className="flex bg-slate-100 p-1 rounded-2xl w-fit">
+            {[
+              { key: 'all',     label: '全部' },
+              { key: 'pre',     label: '出荷前' },
+              { key: 'shipped', label: '出荷済み' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 ${statusFilter === key ? 'bg-white text-slate-800 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 結果テーブル */}
+      {selectedCodes.size > 0 && (
+        <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+          {/* ヘッダー */}
+          <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-600 text-white rounded-xl shadow-lg shadow-red-100">
+                <Package size={20} />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-800 text-lg tracking-tighter">
+                  {[...selectedCodes].join('・')}
+                </h3>
+                <p className="text-[10px] font-bold text-red-500 mt-0.5 uppercase tracking-widest italic">
+                  Product Order History &middot; {productRows.length} records &middot; 合計 {totalQty.toLocaleString()} 台
+                  {statusFilter !== 'all' && <span className="ml-2 text-amber-500 normal-case">（{statusFilter === 'pre' ? '出荷前のみ' : '出荷済みのみ'}）</span>}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* パンくず */}
+              <div className="flex items-center gap-1.5 text-xs font-bold flex-wrap">
+                <button
+                  onClick={() => { setDrillLease(null); setDrillBranch(null); }}
+                  className={`flex items-center gap-1 transition-colors ${isLeaseLevel ? 'text-red-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <Building2 size={14} /> リース会社
+                </button>
+                {drillLease && (<>
+                  <ChevronRight size={12} className="text-slate-300" />
+                  <button
+                    onClick={() => setDrillBranch(null)}
+                    className={`flex items-center gap-1 transition-colors ${isBranchLevel ? 'text-red-600' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <Building2 size={14} /> {drillLease}
+                  </button>
+                </>)}
+                {drillBranch && (<>
+                  <ChevronRight size={12} className="text-slate-300" />
+                  <span className="text-red-600 flex items-center gap-1"><User size={14} /> {drillBranch}</span>
+                </>)}
+              </div>
+              {/* CSV出力ボタン */}
+              <button
+                onClick={handleExportCsv}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-300 transition-all shadow-sm text-xs font-bold no-print"
+              >
+                <FileSpreadsheet size={14} /> CSV出力
+              </button>
+            </div>
+          </div>
+
+          {productRows.length === 0 ? (
+            <div className="px-8 py-16 text-center text-slate-300 italic text-sm">該当するデータがありません</div>
+          ) : (
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  {/* 年ヘッダー行 */}
+                  <tr className="bg-slate-900 text-white text-xs font-black tracking-wide">
+                    <th rowSpan={2} className="px-4 md:px-6 py-4 min-w-[180px] sticky left-0 bg-slate-900 z-10 border-r border-slate-800 align-middle">
+                      {levelLabel}
+                      {isCustomerLevel && <span className="ml-2 text-slate-400 font-bold normal-case">（担当者）</span>}
+                    </th>
+                    {yearGroups.map(({ year, months }) => (
+                      <th
+                        key={year}
+                        colSpan={expandedYears.has(year) ? months.length : 1}
+                        onClick={() => toggleYear(year)}
+                        className="px-3 py-3 text-center border-l border-slate-700 whitespace-nowrap cursor-pointer hover:bg-slate-700 transition-colors select-none"
+                        style={{ minWidth: expandedYears.has(year) ? undefined : '72px' }}
+                      >
+                        <span className="flex items-center justify-center gap-1">
+                          {year}
+                          <span className="text-slate-400 text-[10px]">{expandedYears.has(year) ? '▼' : '▶'}</span>
+                        </span>
+                      </th>
+                    ))}
+                    <th rowSpan={2} className="px-4 py-4 text-center border-l border-slate-700 bg-slate-800 min-w-[72px] whitespace-nowrap align-middle">合計</th>
+                  </tr>
+                  {/* 月ヘッダー行（展開中の年のみ） */}
+                  <tr className="bg-slate-800 text-white text-[11px] font-bold">
+                    {yearGroups.map(({ year, months }) =>
+                      expandedYears.has(year)
+                        ? months.map(m => (
+                            <th key={m} className="px-2 py-2 text-center border-l border-slate-700 whitespace-nowrap min-w-[64px] text-slate-300">
+                              {m.replace(year, '')}
+                            </th>
+                          ))
+                        : null
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {/* 合計行 */}
+                  <tr className="bg-red-50/60 border-b-2 border-red-200">
+                    <td className="px-4 md:px-6 py-3 sticky left-0 bg-red-50/60 z-10 border-r border-red-200">
+                      <span className="font-black text-red-700 text-sm">
+                        {isCustomerLevel ? `${drillBranch} 合計` : isBranchLevel ? `${drillLease} 合計` : '全体 合計'}
+                      </span>
+                    </td>
+                    {yearGroups.map(({ year, months }) => {
+                      if (expandedYears.has(year)) {
+                        return months.map(m => {
+                          const sum = displayRows.reduce((s, r) => s + (r.quantity[m] || 0), 0);
+                          return (
+                            <td key={m} className="px-3 py-3 text-center border-l border-red-200">
+                              <span className="font-mono font-black text-red-800 text-sm">{sum > 0 ? sum.toLocaleString() : '—'}</span>
+                            </td>
+                          );
+                        });
+                      }
+                      const yearSum = months.reduce((s, m) => s + displayRows.reduce((a, r) => a + (r.quantity[m] || 0), 0), 0);
+                      return (
+                        <td key={year} className="px-3 py-3 text-center border-l border-red-200">
+                          <span className="font-mono font-black text-red-800 text-sm">{yearSum > 0 ? yearSum.toLocaleString() : '—'}</span>
+                        </td>
+                      );
+                    })}
+                    <td className="px-4 py-3 text-center border-l border-red-300 bg-red-100/50">
+                      <span className="font-mono font-black text-red-800 text-sm">{totalQty.toLocaleString()}</span>
+                    </td>
+                  </tr>
+
+                  {displayRows.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      onClick={() => handleDrill(row.name)}
+                      className={`group transition-all ${!isCustomerLevel ? 'cursor-pointer hover:bg-red-50/30' : 'hover:bg-slate-50/50'}`}
+                    >
+                      <td className="px-4 md:px-6 py-3 sticky left-0 bg-white z-10 border-r border-slate-100 group-hover:bg-inherit">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-black text-slate-800 text-sm group-hover:text-red-600 transition-colors">{row.name}</span>
+                          {isCustomerLevel && row.ordererStr && (
+                            <span className="text-[11px] text-slate-500 font-bold bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{row.ordererStr}</span>
+                          )}
+                          {!isCustomerLevel && (
+                            <ChevronRight size={13} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0 flex-shrink-0" />
+                          )}
+                        </div>
+                      </td>
+                      {yearGroups.map(({ year, months }) => {
+                        if (expandedYears.has(year)) {
+                          return months.map(m => {
+                            const qty = row.quantity[m] || 0;
+                            return (
+                              <td key={m} className="px-3 py-3 text-center border-l border-slate-100">
+                                {qty > 0
+                                  ? <span className="font-mono font-black text-slate-700 text-sm">{qty.toLocaleString()}</span>
+                                  : <span className="text-slate-200 text-xs">—</span>
+                                }
+                              </td>
+                            );
+                          });
+                        }
+                        const yearQty = months.reduce((s, m) => s + (row.quantity[m] || 0), 0);
+                        return (
+                          <td key={year} className="px-3 py-3 text-center border-l border-slate-100">
+                            {yearQty > 0
+                              ? <span className="font-mono font-black text-slate-700 text-sm">{yearQty.toLocaleString()}</span>
+                              : <span className="text-slate-200 text-xs">—</span>
+                            }
+                          </td>
+                        );
+                      })}
+                      <td className="px-4 py-3 text-center border-l border-slate-200 bg-slate-50/50">
+                        <span className="font-mono font-black text-slate-600 text-sm">{row.total > 0 ? row.total.toLocaleString() : '—'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

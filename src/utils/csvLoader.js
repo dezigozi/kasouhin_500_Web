@@ -60,6 +60,23 @@ const HEADER_MAP = {
   '日付':                 'date',
   '年月日':               'date',
   'date':                 'date',
+  // deliverydate（納車年月日）
+  '納車年月':             'deliverydate',
+  '納車年月日':           'deliverydate',
+  'deliverydate':         'deliverydate',
+  'deliveryday':          'deliverydate',
+  // documentNumber（伝票番号）
+  '伝票番号':             'documentNumber',
+  'documentnumber':       'documentNumber',
+  'document_number':      'documentNumber',
+  // car（車種）
+  'car':                  'car',
+  '車種':                 'car',
+  '車名':                 'car',
+  // status（ステータス）
+  'status':               'status',
+  'ステータス':           'status',
+  'status番号':           'status',
   // 旧形式互換
   'fiscalyear':           'fiscalYear',
   '会計年度':             'fiscalYear',
@@ -124,6 +141,17 @@ function parseCsv(csv) {
       if (dateInfo) {
         row.fiscalYear = dateInfo.fiscalYear;
         row.month = dateInfo.month;
+      }
+    }
+
+    // deliverydate カラムから deliveryYM（"26年4月" 形式）と deliverySortKey を生成
+    if (row.deliverydate) {
+      const dInfo = parseDate(row.deliverydate);
+      if (dInfo) {
+        const calYear = dInfo.month >= 4 ? dInfo.fiscalYear : dInfo.fiscalYear + 1;
+        const shortYear = calYear % 100;
+        row.deliveryYM = `${shortYear}年${dInfo.month}月`;
+        row.deliverySortKey = calYear * 100 + dInfo.month;
       }
     }
 

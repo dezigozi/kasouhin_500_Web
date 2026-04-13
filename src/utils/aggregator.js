@@ -662,27 +662,27 @@ export function generateCsvContent(pivotData, years) {
  * @param {string[]} months 「YYYY年M月」の配列（「計」は含めない）
  */
 export function generateCsvContentByMonth(pivotData, months) {
-  const headers = ['リース会社', '部店', '注文者', '顧客名'];
-  months.forEach(m => {
-    headers.push(`${m}_売上`, `${m}_粗利`, `${m}_粗利率`);
-  });
+  const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const headers = ['リース会社', '注文者', '顧客名', '受注月', '売上', '粗利', '粗利率'];
+  const lines = [headers.map(q).join(',')];
 
-  const lines = [headers.join(',')];
   pivotData.forEach(row => {
-    const cells = [
-      `"${row.lease}"`,
-      `"${row.branch}"`,
-      `"${row.orderer}"`,
-      `"${row.customer}"`,
-    ];
     months.forEach(m => {
       const s = row.sales[m] || 0;
       const p = row.profit[m] || 0;
-      const mr = s > 0 ? ((p / s) * 100).toFixed(1) : '0.0';
-      cells.push(s, p, `${mr}%`);
+      if (s === 0 && p === 0) return; // 実績ゼロの月は出力しない
+      const mr = s > 0 ? ((p / s) * 100).toFixed(1) + '%' : '0.0%';
+      lines.push([
+        q(row.lease),
+        q(row.orderer),
+        q(row.customer),
+        q(m),
+        s,
+        p,
+        q(mr),
+      ].join(','));
     });
-    lines.push(cells.join(','));
   });
 
-  return lines.join('\n');
+  return lines.join('\r\n');
 }
