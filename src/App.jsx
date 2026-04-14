@@ -1334,11 +1334,13 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
 const ProductSearchView = ({ rows }) => {
   const [searchInput, setSearchInput] = useState('');
   const [selectedCodes, setSelectedCodes] = useState(new Set());
+  const [confirmedCodes, setConfirmedCodes] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pre' | 'shipped'
   const [drillLease, setDrillLease] = useState(null);
   const [drillBranch, setDrillBranch] = useState(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const searchRef = useRef(null);
+  const resultsRef = useRef(null);
 
   // 入力に部分一致する品番候補（全データから）
   const matchingCodes = useMemo(() => {
@@ -1366,12 +1368,15 @@ const ProductSearchView = ({ rows }) => {
       else next.add(code);
       return next;
     });
-    setDrillLease(null);
-    setDrillBranch(null);
   };
 
   const removeCode = (code) => {
     setSelectedCodes(prev => {
+      const next = new Set(prev);
+      next.delete(code);
+      return next;
+    });
+    setConfirmedCodes(prev => {
       const next = new Set(prev);
       next.delete(code);
       return next;
@@ -1383,8 +1388,16 @@ const ProductSearchView = ({ rows }) => {
   const selectAll = () => {
     const allCodes = new Set([...selectedCodes, ...matchingCodes.map(([c]) => c)]);
     setSelectedCodes(allCodes);
+  };
+
+  const handleConfirm = () => {
+    if (selectedCodes.size === 0) return;
+    setConfirmedCodes(new Set(selectedCodes));
     setDrillLease(null);
     setDrillBranch(null);
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   // ステータス判定
@@ -1395,15 +1408,15 @@ const ProductSearchView = ({ rows }) => {
     return true;
   };
 
-  // 品番＋ステータスでフィルタ済みの行
+  // 品番＋ステータスでフィルタ済みの行（confirmedCodesを使用）
   const productRows = useMemo(() => {
-    if (selectedCodes.size === 0) return [];
+    if (confirmedCodes.size === 0) return [];
     return rows.filter(r =>
       r.productCode != null &&
-      selectedCodes.has(r.productCode.toString()) &&
+      confirmedCodes.has(r.productCode.toString()) &&
       matchStatus(r)
     );
-  }, [rows, selectedCodes, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, confirmedCodes, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 選択品番の品名マップ
   const productNameMap = useMemo(() => {
@@ -1487,13 +1500,13 @@ const ProductSearchView = ({ rows }) => {
 
   const totalQty = displayRows.reduce((s, r) => s + r.total, 0);
 
-  // CSV エクスポート（選択品番全体・出荷区分列付き）
+  // CSV エクスポート（確定品番全体・出荷区分列付き）
   const handleExportCsv = () => {
-    if (selectedCodes.size === 0) return;
+    if (confirmedCodes.size === 0) return;
 
     // ステータスフィルター無視で全データを出力（出荷区分列で判別）
     const exportSrc = rows.filter(r =>
-      r.productCode != null && selectedCodes.has(r.productCode.toString())
+      r.productCode != null && confirmedCodes.has(r.productCode.toString())
     );
 
     // 納車年月→ソートキー マップ
@@ -1552,7 +1565,7 @@ const ProductSearchView = ({ rows }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `品番受注明細_${[...selectedCodes].join('-')}_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `品番受注明細_${[...confirmedCodes].join('-')}_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1631,12 +1644,25 @@ const ProductSearchView = ({ rows }) => {
                 </div>
               ))}
               <button
-                onClick={() => { setSelectedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
+                onClick={() => { setSelectedCodes(new Set()); setConfirmedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
                 className="px-3 py-1.5 text-[11px] font-black text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 全解除
               </button>
             </div>
+          </div>
+        )}
+
+        {/* 確定ボタン */}
+        {selectedCodes.size > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={handleConfirm}
+              className="w-full flex items-center justify-center gap-2 py-4 bg-slate-900 text-white font-black text-sm rounded-2xl shadow-xl hover:bg-red-600 transition-all duration-300 active:scale-95"
+            >
+              <Search size={16} />
+              この品番で検索する（{selectedCodes.size}件）
+            </button>
           </div>
         )}
 
@@ -1662,8 +1688,8 @@ const ProductSearchView = ({ rows }) => {
       </div>
 
       {/* 結果テーブル */}
-      {selectedCodes.size > 0 && (
-        <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+      {confirmedCodes.size > 0 && (
+        <div ref={resultsRef} className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
           {/* ヘッダー */}
           <div className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
             <div className="flex items-center gap-3">
@@ -1672,7 +1698,7 @@ const ProductSearchView = ({ rows }) => {
               </div>
               <div>
                 <h3 className="font-black text-slate-800 text-lg tracking-tighter">
-                  {[...selectedCodes].join('・')}
+                  {[...confirmedCodes].join('・')}
                 </h3>
                 <p className="text-[10px] font-bold text-red-500 mt-0.5 uppercase tracking-widest italic">
                   Product Order History &middot; {productRows.length} records &middot; 合計 {totalQty.toLocaleString()} 台
