@@ -1599,7 +1599,10 @@ const ProductSearchView = ({ rows }) => {
 
             {/* 候補ドロップダウン */}
             {isDropdownOpen && matchingCodes.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div
+                className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden"
+                onPointerDown={(e) => e.preventDefault()}
+              >
                 <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 bg-slate-50">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{matchingCodes.length} 件一致</span>
                   <button onClick={selectAll} className="text-[11px] font-black text-red-600 hover:text-red-700 flex items-center gap-1">
