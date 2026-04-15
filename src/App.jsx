@@ -581,10 +581,10 @@ const App = () => {
 
       {/* ===== Top Bar（全サイズ表示） ===== */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-slate-900 text-white flex items-center justify-between px-4 py-3 no-print">
-        <div className="flex items-center gap-2">
+        <button onClick={() => setIsSidebarOpen(v => !v)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="bg-red-500 p-1.5 rounded-lg"><Database size={18} /></div>
           <span className="font-black text-sm tracking-tight">{REPORT_TITLE}</span>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           {dataDate && (
             <span className="text-[11px] font-bold text-slate-300 bg-slate-700 px-2.5 py-1 rounded-lg whitespace-nowrap">
