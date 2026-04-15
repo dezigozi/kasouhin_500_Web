@@ -509,6 +509,41 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
   });
 }
 
+export function aggregateByProductForOrdererByMonth(rows, months, branchName, ordererName) {
+  const filtered = rows.filter(r => r.branch === branchName && r.ordererName === ordererName);
+  const map = {};
+  filtered.forEach(row => {
+    const key = row.productCode || '(品番なし)';
+    if (!map[key]) {
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, slipSets: {}, quantity: {} };
+      months.forEach(mo => {
+        map[key].sales[mo] = 0; map[key].profit[mo] = 0;
+        map[key].slipSets[mo] = new Set(); map[key].quantity[mo] = 0;
+      });
+    }
+    if (row.productName && !map[key].productName) {
+      map[key].productName = row.productName;
+    }
+    const monthKey = monthKeyFromRow(row);
+    if (monthKey && months.includes(monthKey)) {
+      map[key].sales[monthKey] += row.sales || 0;
+      map[key].profit[monthKey] += row.profit || 0;
+      map[key].quantity[monthKey] += row.quantity || 0;
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    }
+  });
+  return Object.values(map).map(item => {
+    const count = {};
+    months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
+    const rest = { ...item };
+    delete rest.slipSets;
+    return { ...rest, count };
+  }).sort((a, b) => {
+    const latestMonth = months[months.length - 1];
+    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+  });
+}
+
 export function aggregateByProductForCustomerByMonth(rows, months, branchName, customerName) {
   const filtered = rows.filter(r => r.branch === branchName && r.customerName === customerName);
   const map = {};

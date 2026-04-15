@@ -12,7 +12,7 @@ import {
   filterRows,
   aggregateByBranchByMonth, aggregateByOrdererByMonth, aggregateByCustomerByMonth,
   aggregateByCustomerInBranchByMonth, aggregateByOrdererForCustomerByMonth,
-  aggregateByProductByMonth, aggregateByProductForCustomerByMonth, aggregateByProductInBranchByMonth,
+  aggregateByProductByMonth, aggregateByProductForCustomerByMonth, aggregateByProductForOrdererByMonth, aggregateByProductInBranchByMonth,
   searchCustomers,
   generatePivotDataByMonth, calcYoY, calcMargin, formatCurrencyFull,
   generateCsvContentByMonth,
@@ -318,6 +318,9 @@ const App = () => {
     if (customerViewMode === 'product' && branchName && secondName && !thirdName) {
       if (branchName === secondName) {
         return aggregateByProductInBranchByMonth(filteredRows, monthList, branchName);
+      }
+      if (hierarchyOrder === 'orderer_first') {
+        return aggregateByProductForOrdererByMonth(filteredRows, monthList, branchName, secondName);
       }
       return aggregateByProductForCustomerByMonth(filteredRows, monthList, branchName, secondName);
     }
