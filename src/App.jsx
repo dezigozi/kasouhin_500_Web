@@ -704,7 +704,7 @@ const App = () => {
       </aside>
 
       {/* ===== Main Content ===== */}
-      <main className="pt-20 min-h-screen p-4 md:p-8 overflow-y-auto custom-scrollbar" ref={printRef}>
+      <main className="pt-20 min-h-screen px-4 pb-4 md:px-8 md:pb-8 overflow-y-auto custom-scrollbar" ref={printRef}>
         {/* Header */}
         <header className="mb-6 md:mb-10 space-y-4 md:space-y-8 no-print">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
