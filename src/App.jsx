@@ -4,7 +4,7 @@ import {
   ArrowUpRight, ArrowDownRight, LayoutDashboard, Database,
   Calendar, RefreshCcw, CheckCircle2, FileText, FileSpreadsheet,
   ListFilter, AlertCircle, Loader2, XCircle, ArrowUpDown, Eye, EyeOff,
-  CheckSquare, Square, Package, Search, Menu, X,
+  CheckSquare, Square, Package, Search, Menu, X, ExternalLink,
 } from 'lucide-react';
 import { getCache, setCache, clearCache } from './utils/db';
 import { loadCsvData } from './utils/csvLoader';
@@ -575,9 +575,15 @@ const App = () => {
           <div className="bg-red-500 p-1.5 rounded-lg"><Database size={18} /></div>
           <span className="font-black text-sm tracking-tight">{REPORT_TITLE}</span>
         </div>
-        <button onClick={() => setIsSidebarOpen(v => !v)} className="p-2 rounded-xl hover:bg-slate-800 transition-colors">
-          {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <a href="https://kasouhin-uriage-web.vercel.app" target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black transition-colors">
+            <ExternalLink size={13} /> 売上レポート
+          </a>
+          <button onClick={() => setIsSidebarOpen(v => !v)} className="p-2 rounded-xl hover:bg-slate-800 transition-colors">
+            {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
 
       {/* ===== Sidebar Overlay（全サイズ・外タップで閉じる） ===== */}
