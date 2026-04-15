@@ -972,7 +972,9 @@ const DashboardView = ({
             <Building2 size={16} /> 部店一覧
           </button>
           <ChevronRight size={14} className="text-slate-300" />
-          <span className="text-red-600 flex items-center gap-1"><User size={16} /> {activeView.branchName}</span>
+          <button onClick={() => onBreadcrumb('second')} className="flex items-center gap-1 transition-colors text-slate-400 hover:text-slate-600">
+            <Store size={16} /> {activeView.branchName}
+          </button>
           <ChevronRight size={14} className="text-slate-300" />
           <span className="text-red-600 flex items-center gap-1"><Package size={16} /> {activeView.secondName}</span>
         </>
