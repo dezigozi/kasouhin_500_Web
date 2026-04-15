@@ -281,21 +281,9 @@ const App = () => {
     setActiveView(prev => ({ ...prev, secondName: null, thirdName: null }));
   }, [hierarchyOrder]);
 
-  // ===== データ基準日（CSVの最新受注年月） =====
-  const dataDate = useMemo(() => {
-    if (!rawData?.rows?.length) return null;
-    let maxYear = 0, maxMonth = 0;
-    rawData.rows.forEach(r => {
-      const y = Number(r.calendarYear);
-      const m = Number(r.month);
-      if (!isNaN(y) && !isNaN(m) && y > 1900) {
-        if (y > maxYear || (y === maxYear && m > maxMonth)) {
-          maxYear = y; maxMonth = m;
-        }
-      }
-    });
-    return maxYear > 0 ? `${maxYear}/${maxMonth}` : null;
-  }, [rawData]);
+  // ===== データ基準日（master_data.csv の最終gitコミット日 — ビルド時注入） =====
+  // eslint-disable-next-line no-undef
+  const dataDate = (typeof __CSV_COMMIT_DATE__ !== 'undefined' && __CSV_COMMIT_DATE__) ? __CSV_COMMIT_DATE__ : null;
 
   // ===== フィルタ =====
   const filteredRows = useMemo(() => {
