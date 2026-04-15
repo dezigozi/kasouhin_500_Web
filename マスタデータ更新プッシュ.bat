@@ -22,8 +22,11 @@ echo [1/3] 変更ファイルを確認中...
 git status public/data/master_data.csv
 echo.
 
-REM 今日の日付でコミットメッセージを作成
-for /f %%d in ('powershell -Command "Get-Date -Format yyyy/MM/dd"') do set TODAY=%%d
+REM 今日の日付を取得（一時ファイル経由）
+powershell -NoProfile -Command "Get-Date -Format 'yyyy/MM/dd' | Out-File '%~dp0_date_tmp.txt' -Encoding ASCII -NoNewline"
+set /p TODAY=<"%~dp0_date_tmp.txt"
+del "%~dp0_date_tmp.txt" > nul 2>&1
+
 echo コミットメッセージ: data: master_data.csv 更新 %TODAY%
 echo.
 
