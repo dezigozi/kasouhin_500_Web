@@ -315,25 +315,27 @@ const App = () => {
     if (!filteredRows.length || !monthList.length) return [];
     const { branchName, secondName, thirdName } = activeView;
 
+    const excludeKO = (rows) => rows.filter(r => !String(r.name || '').startsWith('K-O'));
+
     if (customerViewMode === 'product' && branchName && secondName && !thirdName) {
       if (branchName === secondName) {
-        return aggregateByProductInBranchByMonth(filteredRows, monthList, branchName);
+        return excludeKO(aggregateByProductInBranchByMonth(filteredRows, monthList, branchName));
       }
       if (hierarchyOrder === 'orderer_first') {
-        return aggregateByProductForOrdererByMonth(filteredRows, monthList, branchName, secondName);
+        return excludeKO(aggregateByProductForOrdererByMonth(filteredRows, monthList, branchName, secondName));
       }
-      return aggregateByProductForCustomerByMonth(filteredRows, monthList, branchName, secondName);
+      return excludeKO(aggregateByProductForCustomerByMonth(filteredRows, monthList, branchName, secondName));
     }
 
     if (!branchName) return aggregateByBranchByMonth(filteredRows, monthList);
     if (hierarchyOrder === 'orderer_first') {
       if (!secondName) return aggregateByOrdererByMonth(filteredRows, monthList, branchName);
       if (!thirdName)  return aggregateByCustomerByMonth(filteredRows, monthList, branchName, secondName);
-      return aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'orderer_first');
+      return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'orderer_first'));
     }
     if (!secondName) return aggregateByCustomerInBranchByMonth(filteredRows, monthList, branchName);
     if (!thirdName)  return aggregateByOrdererForCustomerByMonth(filteredRows, monthList, branchName, secondName);
-    return aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first');
+    return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first'));
   }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode]);
 
   // テーブルデータ変更時：チェックを全選択に初期化
