@@ -624,7 +624,7 @@ const App = () => {
 
         <nav className="flex-1 space-y-2">
           <button
-            onClick={() => { setViewMode('dashboard'); setIsSidebarOpen(false); }}
+            onClick={() => { setViewMode('dashboard'); setSelectedLeaseCo('ALL'); setIsSidebarOpen(false); }}
             className={`flex items-center gap-3 w-full p-4 rounded-2xl transition-all duration-300 ${
               viewMode === 'dashboard'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 scale-105'
@@ -635,7 +635,7 @@ const App = () => {
             <span className="font-black text-sm tracking-tight">分析ダッシュボード</span>
           </button>
           <button
-            onClick={() => { setViewMode('pivot_report'); setIsSidebarOpen(false); }}
+            onClick={() => { setViewMode('pivot_report'); setSelectedLeaseCo('ALL'); setIsSidebarOpen(false); }}
             className={`flex items-center gap-3 w-full p-4 rounded-2xl transition-all duration-300 ${
               viewMode === 'pivot_report'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 scale-105'
@@ -646,7 +646,7 @@ const App = () => {
             <span className="font-black text-sm tracking-tight">一括網羅レポート</span>
           </button>
           <button
-            onClick={() => { setViewMode('product_search'); setIsSidebarOpen(false); }}
+            onClick={() => { setViewMode('product_search'); setSelectedLeaseCo('ALL'); setIsSidebarOpen(false); }}
             className={`flex items-center gap-3 w-full p-4 rounded-2xl transition-all duration-300 ${
               viewMode === 'product_search'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 scale-105'
