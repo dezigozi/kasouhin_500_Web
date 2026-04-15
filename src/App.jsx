@@ -80,7 +80,6 @@ const App = () => {
 
   // ===== Data State =====
   const [rawData, setRawData] = useState(null);
-  const [dataDate, setDataDate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ fetchMsg: '', isSyncing: false });
   const [loadError, setLoadError] = useState(null);
@@ -127,7 +126,6 @@ const App = () => {
         const csvData = await loadCsvData();
         const rows = enrichRowsCalendarYear(csvData.rows || []);
         setRawData({ ...csvData, rows, fromCache: false, cacheAgeMsg: 'CSV' });
-        if (csvData.dataDate) setDataDate(csvData.dataDate);
         setConnectionStatus('online');
         setLoadError(null);
       } catch (err) {
@@ -282,6 +280,22 @@ const App = () => {
   useEffect(() => {
     setActiveView(prev => ({ ...prev, secondName: null, thirdName: null }));
   }, [hierarchyOrder]);
+
+  // ===== データ基準日（CSVの最新受注年月） =====
+  const dataDate = useMemo(() => {
+    if (!rawData?.rows?.length) return null;
+    let maxYear = 0, maxMonth = 0;
+    rawData.rows.forEach(r => {
+      const y = Number(r.calendarYear);
+      const m = Number(r.month);
+      if (!isNaN(y) && !isNaN(m) && y > 1900) {
+        if (y > maxYear || (y === maxYear && m > maxMonth)) {
+          maxYear = y; maxMonth = m;
+        }
+      }
+    });
+    return maxYear > 0 ? `${maxYear}/${maxMonth}` : null;
+  }, [rawData]);
 
   // ===== フィルタ =====
   const filteredRows = useMemo(() => {
