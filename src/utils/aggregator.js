@@ -4,6 +4,29 @@
  */
 
 /**
+ * 受注件数カウントヘルパー
+ * documentNumber があればユニーク伝票数、なければ行数をカウント
+ */
+function initCountEntry(entry, years) {
+  entry.count = {};
+  entry._docs = {};
+  years.forEach(y => { entry.count[y] = 0; entry._docs[y] = new Set(); });
+}
+function accCount(entry, row) {
+  const y = row.fiscalYear;
+  if (!entry._docs[y]) { entry._docs[y] = new Set(); entry.count[y] = 0; }
+  if (row.documentNumber != null && row.documentNumber !== '') {
+    entry._docs[y].add(String(row.documentNumber));
+    entry.count[y] = entry._docs[y].size;
+  } else {
+    entry.count[y]++;
+  }
+}
+function finalizeCount(map) {
+  Object.values(map).forEach(item => { delete item._docs; });
+}
+
+/**
  * フィルタリング: リース会社 + 月範囲
  */
 export function filterRows(rows, { leaseCompany, startMonth, endMonth }) {
@@ -39,12 +62,15 @@ export function aggregateByBranch(rows, years) {
     if (!map[key]) {
       map[key] = { name: key, sales: {}, profit: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.fiscalYear && years.includes(row.fiscalYear)) {
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -62,12 +88,15 @@ export function aggregateByOrderer(rows, years, branchName) {
     if (!map[key]) {
       map[key] = { name: key, sales: {}, profit: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.fiscalYear && years.includes(row.fiscalYear)) {
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -85,12 +114,15 @@ export function aggregateByCustomer(rows, years, branchName, ordererName) {
     if (!map[key]) {
       map[key] = { name: key, sales: {}, profit: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.fiscalYear && years.includes(row.fiscalYear)) {
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -108,12 +140,15 @@ export function aggregateByCustomerInBranch(rows, years, branchName) {
     if (!map[key]) {
       map[key] = { name: key, sales: {}, profit: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.fiscalYear && years.includes(row.fiscalYear)) {
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -131,12 +166,15 @@ export function aggregateByOrdererForCustomer(rows, years, branchName, customerN
     if (!map[key]) {
       map[key] = { name: key, sales: {}, profit: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.fiscalYear && years.includes(row.fiscalYear)) {
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -162,6 +200,7 @@ export function aggregateByProductByYear(rows, years, branchName, secondName, th
     if (!map[key]) {
       map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; map[key].quantity[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.productName && !map[key].productName) {
       map[key].productName = row.productName;
@@ -170,8 +209,10 @@ export function aggregateByProductByYear(rows, years, branchName, secondName, th
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
       map[key].quantity[row.fiscalYear] += row.quantity || 0;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -192,6 +233,7 @@ export function aggregateByProductForCustomer(rows, years, branchName, customerN
     if (!map[key]) {
       map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; map[key].quantity[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.productName && !map[key].productName) {
       map[key].productName = row.productName;
@@ -200,8 +242,10 @@ export function aggregateByProductForCustomer(rows, years, branchName, customerN
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
       map[key].quantity[row.fiscalYear] += row.quantity || 0;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -220,6 +264,7 @@ export function aggregateByProductInBranch(rows, years, branchName) {
     if (!map[key]) {
       map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
       years.forEach(y => { map[key].sales[y] = 0; map[key].profit[y] = 0; map[key].quantity[y] = 0; });
+      initCountEntry(map[key], years);
     }
     if (row.productName && !map[key].productName) {
       map[key].productName = row.productName;
@@ -228,8 +273,10 @@ export function aggregateByProductInBranch(rows, years, branchName) {
       map[key].sales[row.fiscalYear] += row.sales;
       map[key].profit[row.fiscalYear] += row.profit;
       map[key].quantity[row.fiscalYear] += row.quantity || 0;
+      accCount(map[key], row);
     }
   });
+  finalizeCount(map);
   return Object.values(map).sort((a, b) => {
     const latestYear = years[years.length - 1];
     return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
@@ -291,7 +338,7 @@ export function aggregateByBranchByMonth(rows, months) {
     if (monthKey && months.includes(monthKey)) {
       map[key].sales[monthKey] += row.sales || 0;
       map[key].profit[monthKey] += row.profit || 0;
-      if (row.orderSlipNo) map[key].slipSets[monthKey].add(row.orderSlipNo);
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
     }
   });
   return Object.values(map).map(item => {
@@ -319,7 +366,7 @@ export function aggregateByOrdererByMonth(rows, months, branchName) {
     if (monthKey && months.includes(monthKey)) {
       map[key].sales[monthKey] += row.sales || 0;
       map[key].profit[monthKey] += row.profit || 0;
-      if (row.orderSlipNo) map[key].slipSets[monthKey].add(row.orderSlipNo);
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
     }
   });
   return Object.values(map).map(item => {
@@ -347,7 +394,7 @@ export function aggregateByCustomerByMonth(rows, months, branchName, ordererName
     if (monthKey && months.includes(monthKey)) {
       map[key].sales[monthKey] += row.sales || 0;
       map[key].profit[monthKey] += row.profit || 0;
-      if (row.orderSlipNo) map[key].slipSets[monthKey].add(row.orderSlipNo);
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
     }
   });
   return Object.values(map).map(item => {
@@ -375,7 +422,7 @@ export function aggregateByCustomerInBranchByMonth(rows, months, branchName) {
     if (monthKey && months.includes(monthKey)) {
       map[key].sales[monthKey] += row.sales || 0;
       map[key].profit[monthKey] += row.profit || 0;
-      if (row.orderSlipNo) map[key].slipSets[monthKey].add(row.orderSlipNo);
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
     }
     if (row.ordererName) map[key].repsSet.add(row.ordererName);
   });
@@ -406,7 +453,7 @@ export function aggregateByOrdererForCustomerByMonth(rows, months, branchName, c
     if (monthKey && months.includes(monthKey)) {
       map[key].sales[monthKey] += row.sales || 0;
       map[key].profit[monthKey] += row.profit || 0;
-      if (row.orderSlipNo) map[key].slipSets[monthKey].add(row.orderSlipNo);
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
     }
   });
   return Object.values(map).map(item => {
@@ -447,7 +494,7 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
       map[key].sales[monthKey] += row.sales || 0;
       map[key].profit[monthKey] += row.profit || 0;
       map[key].quantity[monthKey] += row.quantity || 0;
-      if (row.orderSlipNo) map[key].slipSets[monthKey].add(row.orderSlipNo);
+      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
     }
   });
   return Object.values(map).map(item => {
