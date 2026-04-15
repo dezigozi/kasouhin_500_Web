@@ -397,6 +397,7 @@ const App = () => {
   };
 
   const handleBreadcrumb = (target) => {
+    setCustomerViewMode('orderer');
     if (target === 'branch') setActiveView({ branchName: null, secondName: null, thirdName: null });
     else if (target === 'second') setActiveView(prev => ({ ...prev, secondName: null, thirdName: null }));
     else setActiveView(prev => ({ ...prev, thirdName: null }));
