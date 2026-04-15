@@ -1,62 +1,61 @@
 @echo off
-chcp 65001 > nul
 cd /d "%~dp0"
 
 echo =========================================
-echo  架装品500 マスタデータ 更新プッシュ
+echo  Kasouhin 500 - Master Data Push
 echo =========================================
 echo.
 
-REM master_data.csv に変更があるか確認
+REM Check if master_data.csv has changes
 git diff --quiet -- public/data/master_data.csv
 if %errorlevel% == 0 (
-    echo [変更なし] master_data.csv に変更が見つかりません。
-    echo           CSVファイルを更新してから実行してください。
+    echo [NO CHANGES] master_data.csv has not been modified.
+    echo              Please update the CSV file first.
     echo.
-    echo 何かキーを押すと閉じます...
+    echo Press any key to exit...
     pause > nul
     exit /b 1
 )
 
-echo [1/3] 変更ファイルを確認中...
+echo [1/3] Checking changed files...
 git status public/data/master_data.csv
 echo.
 
-REM 今日の日付を取得（一時ファイル経由）
+REM Get today's date via temp file
 powershell -NoProfile -Command "Get-Date -Format 'yyyy/MM/dd' | Out-File '%~dp0_date_tmp.txt' -Encoding ASCII -NoNewline"
 set /p TODAY=<"%~dp0_date_tmp.txt"
 del "%~dp0_date_tmp.txt" > nul 2>&1
 
-echo コミットメッセージ: data: master_data.csv 更新 %TODAY%
+echo Commit message: data: master_data.csv updated %TODAY%
 echo.
 
-echo [2/3] コミット中...
+echo [2/3] Committing...
 git add public/data/master_data.csv
-git commit -m "data: master_data.csv 更新 %TODAY%"
+git commit -m "data: master_data.csv updated %TODAY%"
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] コミットに失敗しました。
-    echo 何かキーを押すと閉じます...
+    echo [ERROR] Commit failed.
+    echo Press any key to exit...
     pause > nul
     exit /b 1
 )
 
 echo.
-echo [3/3] GitHubにプッシュ中...
+echo [3/3] Pushing to GitHub...
 git push origin main
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] プッシュに失敗しました。
-    echo 何かキーを押すと閉じます...
+    echo [ERROR] Push failed.
+    echo Press any key to exit...
     pause > nul
     exit /b 1
 )
 
 echo.
 echo =========================================
-echo  完了！Vercelが自動でビルド・デプロイします。
-echo  数分後に画面の日付が更新されます。
+echo  Done! Vercel will build and deploy now.
+echo  The date on the page will update in a few minutes.
 echo =========================================
 echo.
-echo 何かキーを押すと閉じます...
+echo Press any key to exit...
 pause > nul
