@@ -80,6 +80,7 @@ const App = () => {
 
   // ===== Data State =====
   const [rawData, setRawData] = useState(null);
+  const [dataDate, setDataDate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ fetchMsg: '', isSyncing: false });
   const [loadError, setLoadError] = useState(null);
@@ -126,6 +127,7 @@ const App = () => {
         const csvData = await loadCsvData();
         const rows = enrichRowsCalendarYear(csvData.rows || []);
         setRawData({ ...csvData, rows, fromCache: false, cacheAgeMsg: 'CSV' });
+        if (csvData.dataDate) setDataDate(csvData.dataDate);
         setConnectionStatus('online');
         setLoadError(null);
       } catch (err) {
@@ -582,6 +584,11 @@ const App = () => {
           <span className="font-black text-sm tracking-tight">{REPORT_TITLE}</span>
         </div>
         <div className="flex items-center gap-2">
+          {dataDate && (
+            <span className="text-[11px] font-bold text-slate-300 bg-slate-700 px-2.5 py-1 rounded-lg whitespace-nowrap">
+              {dataDate}現在
+            </span>
+          )}
           <a href="https://kasouhin-uriage-web.vercel.app" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black transition-colors">
             <ExternalLink size={13} /> 売上レポート
@@ -697,7 +704,7 @@ const App = () => {
       </aside>
 
       {/* ===== Main Content ===== */}
-      <main className="pt-14 min-h-screen p-4 md:p-8 overflow-y-auto custom-scrollbar" ref={printRef}>
+      <main className="pt-20 min-h-screen p-4 md:p-8 overflow-y-auto custom-scrollbar" ref={printRef}>
         {/* Header */}
         <header className="mb-6 md:mb-10 space-y-4 md:space-y-8 no-print">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
@@ -1058,6 +1065,7 @@ const DashboardView = ({
           <SectionIcon className="text-red-500 flex-shrink-0" size={22} />
           <span>{isCustomerSearchMode ? `${activeView.secondName} 品番別実績（全担当者合算）` : isBranchProductMode ? `${activeView.branchName} 品番別実績（全顧客合算）` : levelInfo.title}</span>
           {selectedLeaseCo !== 'ALL' && <span className="text-red-500 text-sm">— {selectedLeaseCo}</span>}
+          <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg tracking-wider">受注月</span>
         </h3>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5">

@@ -102,8 +102,16 @@ export async function loadCsvData() {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
+    const lastModified = response.headers.get('last-modified');
     const csv = await response.text();
-    return parseCsv(csv);
+    const result = parseCsv(csv);
+    if (lastModified) {
+      const d = new Date(lastModified);
+      if (!isNaN(d.getTime())) {
+        result.dataDate = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+      }
+    }
+    return result;
   } catch (err) {
     console.error('CSV 読み込みエラー:', err);
     throw err;
