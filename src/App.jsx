@@ -925,6 +925,7 @@ const DashboardView = ({
 }) => {
   const SectionIcon = levelInfo.icon;
   const isProductMode = customerViewMode === 'product' && activeView.branchName && activeView.secondName && !activeView.thirdName;
+  const isProductLevel = isLeafLevel || isProductMode;
   const isCustomerSearchMode = isProductMode && activeView.branchName !== activeView.secondName;
   const isBranchProductMode = isProductMode && activeView.branchName === activeView.secondName;
   const monthCols = useMemo(() => months.filter(m => m !== '計'), [months]);
@@ -932,23 +933,25 @@ const DashboardView = ({
     if (!data.length || !months.length) return null;
     const filtered = data.filter(item => checkedItems.has(item.name));
     if (!filtered.length) return null;
-    const sales = {}, profit = {}, count = {};
-    months.forEach(m => { sales[m] = 0; profit[m] = 0; count[m] = 0; });
+    const sales = {}, profit = {}, count = {}, quantity = {};
+    months.forEach(m => { sales[m] = 0; profit[m] = 0; count[m] = 0; quantity[m] = 0; });
     filtered.forEach(item => {
       monthCols.forEach(m => {
         sales[m] += item.sales[m] || 0;
         profit[m] += item.profit[m] || 0;
         count[m] += item.count?.[m] || 0;
+        quantity[m] += item.quantity?.[m] || 0;
       });
     });
-    let sumS = 0, sumP = 0, sumC = 0;
-    monthCols.forEach(m => { sumS += sales[m]; sumP += profit[m]; sumC += count[m]; });
+    let sumS = 0, sumP = 0, sumC = 0, sumQ = 0;
+    monthCols.forEach(m => { sumS += sales[m]; sumP += profit[m]; sumC += count[m]; sumQ += quantity[m]; });
     sales['計'] = sumS;
     profit['計'] = sumP;
     count['計'] = sumC;
+    quantity['計'] = sumQ;
     const { branchName, secondName } = activeView;
     const label = !branchName ? '全部店 合計' : !secondName ? `${branchName} 合計` : `${secondName} 合計`;
-    return { name: label, sales, profit, count };
+    return { name: label, sales, profit, count, quantity };
   }, [data, months, monthCols, activeView, checkedItems]);
 
   const toggleCheck = useCallback((name) => {
@@ -1084,41 +1087,55 @@ const DashboardView = ({
                 <td className="px-1 md:px-2 py-4 w-10 md:w-12 text-center">—</td>
                 <td className="px-3 md:px-8 py-4"><div className="font-black text-red-700 text-sm md:text-lg">{totalRow.name}</div></td>
                 {months.map((month, mIdx) => {
-                  let s, p, c;
+                  let s, p, c, q;
                   if (month === '計') {
-                    s = 0; p = 0; c = 0;
-                    monthCols.forEach(m => { s += totalRow.sales[m] || 0; p += totalRow.profit[m] || 0; c += totalRow.count?.[m] || 0; });
+                    s = 0; p = 0; c = 0; q = 0;
+                    monthCols.forEach(m => { s += totalRow.sales[m] || 0; p += totalRow.profit[m] || 0; c += totalRow.count?.[m] || 0; q += totalRow.quantity?.[m] || 0; });
                   } else {
                     s = totalRow.sales[month] || 0;
                     p = totalRow.profit[month] || 0;
                     c = totalRow.count?.[month] || 0;
+                    q = totalRow.quantity?.[month] || 0;
                   }
                   const prevMonth = months[mIdx - 1];
                   const yoy = prevMonth && month !== '計' ? calcYoY(s, totalRow.sales[prevMonth]) : null;
+                  const qoy = prevMonth && month !== '計' ? calcYoY(q, totalRow.quantity?.[prevMonth]) : null;
                   return (
                     <td key={month} className="px-2 md:px-6 py-4 border-l border-red-200">
                       <div className="space-y-2">
-                        {c > 0 && (
+                        {isProductLevel ? (
                           <div className="flex justify-between items-baseline">
-                            <span className="text-[10px] font-black text-red-400">受注件数</span>
-                            <span className="font-mono font-black text-red-600 text-xs md:text-base">{c.toLocaleString()}件</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] font-black text-red-500">売上</span>
-                          <div className="text-right">
-                            <div className="font-mono font-black text-red-800 text-xs md:text-base">{fmtAmt(s)}</div>
-                            {yoy !== null && <div className={`text-[10px] font-black flex items-center justify-end gap-0.5 ${parseFloat(yoy)>=0?'text-emerald-500':'text-rose-500'}`}>{parseFloat(yoy)>=0?<ArrowUpRight size={10}/>:<ArrowDownRight size={10}/>}{yoy}%</div>}
-                          </div>
-                        </div>
-                        {showProfit && (
-                          <div className="flex justify-between items-baseline">
-                            <span className="text-[10px] font-black text-red-500">粗利</span>
+                            <span className="text-[10px] font-black text-red-500">数量</span>
                             <div className="text-right">
-                              <div className="font-mono font-black text-emerald-600 text-xs md:text-base">{fmtAmt(p)}</div>
-                              <div className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black mt-0.5 w-fit ml-auto border border-emerald-100">{calcMargin(p,s)}%</div>
+                              <div className="font-mono font-black text-red-800 text-xs md:text-base">{q.toLocaleString()}</div>
+                              {qoy !== null && <div className={`text-[10px] font-black flex items-center justify-end gap-0.5 ${parseFloat(qoy)>=0?'text-emerald-500':'text-rose-500'}`}>{parseFloat(qoy)>=0?<ArrowUpRight size={10}/>:<ArrowDownRight size={10}/>}{qoy}%</div>}
                             </div>
                           </div>
+                        ) : (
+                          <>
+                            {c > 0 && (
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-[10px] font-black text-red-400">受注件数</span>
+                                <span className="font-mono font-black text-red-600 text-xs md:text-base">{c.toLocaleString()}件</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-[10px] font-black text-red-500">売上</span>
+                              <div className="text-right">
+                                <div className="font-mono font-black text-red-800 text-xs md:text-base">{fmtAmt(s)}</div>
+                                {yoy !== null && <div className={`text-[10px] font-black flex items-center justify-end gap-0.5 ${parseFloat(yoy)>=0?'text-emerald-500':'text-rose-500'}`}>{parseFloat(yoy)>=0?<ArrowUpRight size={10}/>:<ArrowDownRight size={10}/>}{yoy}%</div>}
+                              </div>
+                            </div>
+                            {showProfit && (
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-[10px] font-black text-red-500">粗利</span>
+                                <div className="text-right">
+                                  <div className="font-mono font-black text-emerald-600 text-xs md:text-base">{fmtAmt(p)}</div>
+                                  <div className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black mt-0.5 w-fit ml-auto border border-emerald-100">{calcMargin(p,s)}%</div>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -1160,41 +1177,55 @@ const DashboardView = ({
                     {!isLeafLevel && !isCustomerSearchMode && !isProductMode && <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter no-print">クリックで詳細を表示</div>}
                   </td>
                   {months.map((month, mIdx) => {
-                    let s, p, c;
+                    let s, p, c, q;
                     if (month === '計') {
-                      s = 0; p = 0; c = 0;
-                      monthCols.forEach(m => { s += item.sales[m] || 0; p += item.profit[m] || 0; c += item.count?.[m] || 0; });
+                      s = 0; p = 0; c = 0; q = 0;
+                      monthCols.forEach(m => { s += item.sales[m] || 0; p += item.profit[m] || 0; c += item.count?.[m] || 0; q += item.quantity?.[m] || 0; });
                     } else {
                       s = item.sales[month] || 0;
                       p = item.profit[month] || 0;
                       c = item.count?.[month] || 0;
+                      q = item.quantity?.[month] || 0;
                     }
                     const prevMonth = months[mIdx - 1];
                     const yoy = prevMonth && month !== '計' ? calcYoY(s, item.sales[prevMonth]) : null;
+                    const qoy = prevMonth && month !== '計' ? calcYoY(q, item.quantity?.[prevMonth]) : null;
                     return (
                       <td key={month} className="px-2 md:px-6 py-4 border-l border-slate-300 group-hover:bg-white/50">
                         <div className="space-y-2">
-                          {c > 0 && (
+                          {isProductLevel ? (
                             <div className="flex justify-between items-baseline">
-                              <span className="text-[10px] font-black text-slate-400">受注件数</span>
-                              <span className="font-mono font-black text-slate-500 text-xs md:text-base">{c.toLocaleString()}件</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-baseline">
-                            <span className="text-[10px] font-black text-slate-600">売上</span>
-                            <div className="text-right">
-                              <div className="font-mono font-black text-slate-700 text-xs md:text-base">{fmtAmt(s)}</div>
-                              {yoy !== null && <div className={`text-[10px] font-black flex items-center justify-end gap-0.5 ${parseFloat(yoy)>=0?'text-emerald-500':'text-rose-500'}`}>{parseFloat(yoy)>=0?<ArrowUpRight size={10}/>:<ArrowDownRight size={10}/>}{yoy}%</div>}
-                            </div>
-                          </div>
-                          {showProfit && (
-                            <div className="flex justify-between items-baseline">
-                              <span className="text-[10px] font-black text-slate-600">粗利</span>
+                              <span className="text-[10px] font-black text-slate-600">数量</span>
                               <div className="text-right">
-                                <div className="font-mono font-black text-emerald-600 text-xs md:text-base">{fmtAmt(p)}</div>
-                                <div className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black mt-0.5 w-fit ml-auto border border-emerald-100">{calcMargin(p,s)}%</div>
+                                <div className="font-mono font-black text-slate-700 text-xs md:text-base">{q.toLocaleString()}</div>
+                                {qoy !== null && <div className={`text-[10px] font-black flex items-center justify-end gap-0.5 ${parseFloat(qoy)>=0?'text-emerald-500':'text-rose-500'}`}>{parseFloat(qoy)>=0?<ArrowUpRight size={10}/>:<ArrowDownRight size={10}/>}{qoy}%</div>}
                               </div>
                             </div>
+                          ) : (
+                            <>
+                              {c > 0 && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-[10px] font-black text-slate-400">受注件数</span>
+                                  <span className="font-mono font-black text-slate-500 text-xs md:text-base">{c.toLocaleString()}件</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-[10px] font-black text-slate-600">売上</span>
+                                <div className="text-right">
+                                  <div className="font-mono font-black text-slate-700 text-xs md:text-base">{fmtAmt(s)}</div>
+                                  {yoy !== null && <div className={`text-[10px] font-black flex items-center justify-end gap-0.5 ${parseFloat(yoy)>=0?'text-emerald-500':'text-rose-500'}`}>{parseFloat(yoy)>=0?<ArrowUpRight size={10}/>:<ArrowDownRight size={10}/>}{yoy}%</div>}
+                                </div>
+                              </div>
+                              {showProfit && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-[10px] font-black text-slate-600">粗利</span>
+                                  <div className="text-right">
+                                    <div className="font-mono font-black text-emerald-600 text-xs md:text-base">{fmtAmt(p)}</div>
+                                    <div className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black mt-0.5 w-fit ml-auto border border-emerald-100">{calcMargin(p,s)}%</div>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
