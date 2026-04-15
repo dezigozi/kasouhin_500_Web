@@ -191,9 +191,11 @@ function parseCsv(csv) {
  * テキスト形式 (YYYY/M/D, YYYY-M-D) とシリアル番号に対応
  */
 function parseDate(dateValue) {
-  // テキスト形式: "2026/3/31" または "2026-03-31"
+  // テキスト形式: "2026/3/31" または "2026-03-31" または "2026/3/31 15:50"（時刻付き）
   if (typeof dateValue === 'string') {
-    const parts = dateValue.split(/[-/]/).map(Number);
+    // 時刻部分（スペース以降）を除去してから分割
+    const datePart = dateValue.split(' ')[0];
+    const parts = datePart.split(/[-/]/).map(Number);
     if (parts.length === 3) {
       const [year, month, day] = parts;
       if (year > 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
