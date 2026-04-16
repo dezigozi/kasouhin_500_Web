@@ -12,7 +12,7 @@ import {
   filterRows,
   aggregateByBranchByMonth, aggregateByOrdererByMonth, aggregateByCustomerByMonth,
   aggregateByCustomerInBranchByMonth, aggregateByOrdererForCustomerByMonth,
-  aggregateByProductByMonth, aggregateByProductForCustomerByMonth, aggregateByProductForOrdererByMonth, aggregateByProductInBranchByMonth,
+  aggregateByProductByMonth, aggregateByProductForCustomerByMonth, aggregateByProductForOrdererByMonth, aggregateByProductInBranchByMonth, aggregateByProductAllByMonth,
   searchCustomers,
   generatePivotDataByMonth, calcYoY, calcMargin, formatCurrencyFull,
   generateCsvContentByMonth,
@@ -322,6 +322,10 @@ const App = () => {
     const excludeKO = (rows) => rows.filter(r => !String(r.name || '').startsWith('K-O'));
 
     if (customerViewMode === 'product' && branchName && secondName && !thirdName) {
+      if (branchName === '__ALL__') {
+        const checkedRows = filteredRows.filter(r => checkedItems.has(r.branch));
+        return excludeKO(aggregateByProductAllByMonth(checkedRows, monthList));
+      }
       if (branchName === secondName) {
         return excludeKO(aggregateByProductInBranchByMonth(filteredRows, monthList, branchName));
       }
@@ -340,7 +344,7 @@ const App = () => {
     if (!secondName) return aggregateByCustomerInBranchByMonth(filteredRows, monthList, branchName);
     if (!thirdName)  return aggregateByOrdererForCustomerByMonth(filteredRows, monthList, branchName, secondName);
     return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first'));
-  }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode]);
+  }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode, checkedItems]);
 
   // テーブルデータ変更時：チェックを全選択に初期化
   useEffect(() => {
@@ -995,7 +999,7 @@ const DashboardView = ({
             <Building2 size={16} /> 部店一覧
           </button>
           <ChevronRight size={14} className="text-slate-300" />
-          <span className="text-red-600 flex items-center gap-1"><Package size={16} /> {activeView.branchName} 品番別</span>
+          <span className="text-red-600 flex items-center gap-1"><Package size={16} /> {activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName} 品番別</span>
         </>
       ) : (
         <>
@@ -1103,7 +1107,19 @@ const DashboardView = ({
             {totalRow && (
               <tr className="bg-red-50/50 border-b-2 border-red-200">
                 <td className="px-1 md:px-2 py-4 w-10 md:w-12 text-center">—</td>
-                <td className="px-3 md:px-8 py-4"><div className="font-black text-red-700 text-sm md:text-lg">{totalRow.name}</div></td>
+                <td className="px-3 md:px-8 py-4">
+                  <div className="font-black text-red-700 text-sm md:text-lg flex items-center gap-2">
+                    {totalRow.name}
+                    {!isLeafLevel && !isCustomerSearchMode && !isProductMode && !activeView.branchName && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onShowProductsDirectly({ name: '__ALL__' }); }}
+                        className="flex items-center gap-1 px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-black transition-colors no-print"
+                      >
+                        <Package size={12} /> 品番
+                      </button>
+                    )}
+                  </div>
+                </td>
                 {months.map((month, mIdx) => {
                   let s, p, c, q;
                   if (month === '計') {

@@ -594,6 +594,30 @@ export function aggregateByProductInBranchByMonth(rows, months, branchName) {
   });
 }
 
+export function aggregateByProductAllByMonth(rows, months) {
+  const map = {};
+  rows.forEach(row => {
+    const key = row.productCode || '(品番なし)';
+    if (!map[key]) {
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
+      months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].quantity[mo] = 0; });
+    }
+    if (row.productName && !map[key].productName) {
+      map[key].productName = row.productName;
+    }
+    const monthKey = monthKeyFromRow(row);
+    if (monthKey && months.includes(monthKey)) {
+      map[key].sales[monthKey] += row.sales || 0;
+      map[key].profit[monthKey] += row.profit || 0;
+      map[key].quantity[monthKey] += row.quantity || 0;
+    }
+  });
+  return Object.values(map).sort((a, b) => {
+    const latestMonth = months[months.length - 1];
+    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+  });
+}
+
 /**
  * ピボットデータ生成（月別）
  */
