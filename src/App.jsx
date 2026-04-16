@@ -12,7 +12,10 @@ import {
   filterRows,
   aggregateByBranchByMonth, aggregateByOrdererByMonth, aggregateByCustomerByMonth,
   aggregateByCustomerInBranchByMonth, aggregateByOrdererForCustomerByMonth,
-  aggregateByProductByMonth, aggregateByProductForCustomerByMonth, aggregateByProductForOrdererByMonth, aggregateByProductInBranchByMonth,
+  aggregateByProductByMonth, aggregateByProductForCustomerByMonth, aggregateByProductForOrdererByMonth, aggregateByProductInBranchByMonth, aggregateByProductAllByMonth,
+  aggregateByCustomerAllByMonth, aggregateByOrdererAllByMonth,
+  aggregateByOrdererForCustomerAllByMonth, aggregateByCustomerForOrdererAllByMonth,
+  aggregateByProductByMonthNoBranch, aggregateByProductForCustomerAllByMonth, aggregateByProductForOrdererAllByMonth,
   searchCustomers,
   generatePivotDataByMonth, calcYoY, calcMargin, formatCurrencyFull,
   generateCsvContentByMonth,
@@ -322,6 +325,12 @@ const App = () => {
     const excludeKO = (rows) => rows.filter(r => !String(r.name || '').startsWith('K-O'));
 
     if (customerViewMode === 'product' && branchName && secondName && !thirdName) {
+      if (branchName === '__ALL__') {
+        const checkedRows = filteredRows.filter(r => checkedItems.has(r.branch));
+        if (secondName === '__ALL__') return excludeKO(aggregateByProductAllByMonth(checkedRows, monthList));
+        if (hierarchyOrder === 'orderer_first') return excludeKO(aggregateByProductForOrdererAllByMonth(checkedRows, monthList, secondName));
+        return excludeKO(aggregateByProductForCustomerAllByMonth(checkedRows, monthList, secondName));
+      }
       if (branchName === secondName) {
         return excludeKO(aggregateByProductInBranchByMonth(filteredRows, monthList, branchName));
       }
@@ -332,6 +341,19 @@ const App = () => {
     }
 
     if (!branchName) return aggregateByBranchByMonth(filteredRows, monthList);
+
+    if (branchName === '__ALL__') {
+      const checkedRows = filteredRows.filter(r => checkedItems.has(r.branch));
+      if (hierarchyOrder === 'orderer_first') {
+        if (!secondName) return aggregateByOrdererAllByMonth(checkedRows, monthList);
+        if (!thirdName) return aggregateByCustomerForOrdererAllByMonth(checkedRows, monthList, secondName);
+        return excludeKO(aggregateByProductByMonthNoBranch(checkedRows, monthList, secondName, thirdName, 'orderer_first'));
+      }
+      if (!secondName) return aggregateByCustomerAllByMonth(checkedRows, monthList);
+      if (!thirdName) return aggregateByOrdererForCustomerAllByMonth(checkedRows, monthList, secondName);
+      return excludeKO(aggregateByProductByMonthNoBranch(checkedRows, monthList, secondName, thirdName, 'customer_first'));
+    }
+
     if (hierarchyOrder === 'orderer_first') {
       if (!secondName) return aggregateByOrdererByMonth(filteredRows, monthList, branchName);
       if (!thirdName)  return aggregateByCustomerByMonth(filteredRows, monthList, branchName, secondName);
@@ -340,7 +362,7 @@ const App = () => {
     if (!secondName) return aggregateByCustomerInBranchByMonth(filteredRows, monthList, branchName);
     if (!thirdName)  return aggregateByOrdererForCustomerByMonth(filteredRows, monthList, branchName, secondName);
     return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first'));
-  }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode]);
+  }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode, checkedItems]);
 
   // テーブルデータ変更時：チェックを全選択に初期化
   useEffect(() => {
@@ -527,13 +549,14 @@ const App = () => {
   // ===== 階層ラベル =====
   const levelInfo = useMemo(() => {
     const { branchName, secondName, thirdName } = activeView;
+    const branchLabel = branchName === '__ALL__' ? '全部店' : branchName;
     if (!branchName) return { icon: Building2, label: '部店名', title: '部店別 直近6ヶ月実績' };
     if (hierarchyOrder === 'orderer_first') {
-      if (!secondName) return { icon: Store,    label: '注文者名', title: `${branchName} 内 注文者実績` };
+      if (!secondName) return { icon: Store,    label: '注文者名', title: `${branchLabel} 内 注文者実績` };
       if (!thirdName)  return { icon: User,     label: '顧客名',   title: `${secondName} 内 顧客実績` };
       return                  { icon: Package,  label: '品番',     title: `${thirdName} 内 品番別実績` };
     }
-    if (!secondName) return { icon: User,    label: '顧客名',   title: `${branchName} 内 顧客実績` };
+    if (!secondName) return { icon: User,    label: '顧客名',   title: `${branchLabel} 内 顧客実績` };
     if (!thirdName)  return { icon: Store,   label: '注文者名', title: `${secondName} 内 担当者一覧` };
     return                  { icon: Package, label: '品番',     title: `${thirdName} 内 品番別実績` };
   }, [activeView, hierarchyOrder]);
@@ -984,7 +1007,7 @@ const DashboardView = ({
           </button>
           <ChevronRight size={14} className="text-slate-300" />
           <button onClick={() => onBreadcrumb('second')} className="flex items-center gap-1 transition-colors text-slate-400 hover:text-slate-600">
-            <Store size={16} /> {activeView.branchName}
+            <Store size={16} /> {activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName}
           </button>
           <ChevronRight size={14} className="text-slate-300" />
           <span className="text-red-600 flex items-center gap-1"><Package size={16} /> {activeView.secondName}</span>
@@ -995,7 +1018,7 @@ const DashboardView = ({
             <Building2 size={16} /> 部店一覧
           </button>
           <ChevronRight size={14} className="text-slate-300" />
-          <span className="text-red-600 flex items-center gap-1"><Package size={16} /> {activeView.branchName} 品番別</span>
+          <span className="text-red-600 flex items-center gap-1"><Package size={16} /> {activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName} 品番別</span>
         </>
       ) : (
         <>
@@ -1005,7 +1028,7 @@ const DashboardView = ({
           {activeView.branchName && (<>
             <ChevronRight size={14} className="text-slate-300" />
             <button onClick={() => onBreadcrumb('second')} className={`flex items-center gap-1 transition-colors ${!activeView.secondName ? 'text-red-600' : 'text-slate-400 hover:text-slate-600'}`}>
-              {hierarchyOrder === 'orderer_first' ? <Store size={16} /> : <User size={16} />} {activeView.branchName}
+              {hierarchyOrder === 'orderer_first' ? <Store size={16} /> : <User size={16} />} {activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName}
             </button>
           </>)}
           {activeView.secondName && (<>
@@ -1065,7 +1088,7 @@ const DashboardView = ({
       <div className="p-4 md:p-8 border-b border-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-slate-50/30">
         <h3 className="font-black text-slate-800 text-base md:text-xl flex items-center gap-2 flex-wrap">
           <SectionIcon className="text-red-500 flex-shrink-0" size={22} />
-          <span>{isCustomerSearchMode ? `${activeView.secondName} 品番別実績（全担当者合算）` : isBranchProductMode ? `${activeView.branchName} 品番別実績（全顧客合算）` : levelInfo.title}</span>
+          <span>{isCustomerSearchMode ? `${activeView.secondName} 品番別実績（全担当者合算）` : isBranchProductMode ? `${activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName} 品番別実績（全顧客合算）` : levelInfo.title}</span>
           {selectedLeaseCo !== 'ALL' && <span className="text-red-500 text-sm">— {selectedLeaseCo}</span>}
           <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg tracking-wider">受注月</span>
         </h3>
@@ -1101,9 +1124,21 @@ const DashboardView = ({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {totalRow && (
-              <tr className="bg-red-50/50 border-b-2 border-red-200">
+              <tr className={`bg-red-50/50 border-b-2 border-red-200 ${!isLeafLevel && !isProductMode && !activeView.branchName ? 'cursor-pointer hover:bg-red-100/50 transition-colors' : ''}`} onClick={() => { if (!isLeafLevel && !isProductMode && !activeView.branchName) onDrillDown({ name: '__ALL__' }); }}>
                 <td className="px-1 md:px-2 py-4 w-10 md:w-12 text-center">—</td>
-                <td className="px-3 md:px-8 py-4"><div className="font-black text-red-700 text-sm md:text-lg">{totalRow.name}</div></td>
+                <td className="px-3 md:px-8 py-4">
+                  <div className="font-black text-red-700 text-sm md:text-lg flex items-center gap-2">
+                    {totalRow.name}
+                    {!isLeafLevel && !isCustomerSearchMode && !isProductMode && !activeView.branchName && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onShowProductsDirectly({ name: '__ALL__' }); }}
+                        className="flex items-center gap-1 px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-black transition-colors no-print"
+                      >
+                        <Package size={12} /> 品番
+                      </button>
+                    )}
+                  </div>
+                </td>
                 {months.map((month, mIdx) => {
                   let s, p, c, q;
                   if (month === '計') {
