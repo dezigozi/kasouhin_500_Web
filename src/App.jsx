@@ -98,6 +98,7 @@ const App = () => {
   const [showProfit, setShowProfit] = useState(true);
   const [hierarchyOrder, setHierarchyOrder] = useState('orderer_first');
   const [checkedItems, setCheckedItems] = useState(new Set());
+  const [allModeBranches, setAllModeBranches] = useState(new Set());
   const [activeView, setActiveView] = useState({ branchName: null, secondName: null, thirdName: null });
   const [customerViewMode, setCustomerViewMode] = useState('orderer'); // 'orderer' | 'product'
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
@@ -326,7 +327,7 @@ const App = () => {
 
     if (customerViewMode === 'product' && branchName && secondName && !thirdName) {
       if (branchName === '__ALL__') {
-        const checkedRows = filteredRows.filter(r => checkedItems.has(r.branch));
+        const checkedRows = filteredRows.filter(r => allModeBranches.has(r.branch));
         if (secondName === '__ALL__') return excludeKO(aggregateByProductAllByMonth(checkedRows, monthList));
         if (hierarchyOrder === 'orderer_first') return excludeKO(aggregateByProductForOrdererAllByMonth(checkedRows, monthList, secondName));
         return excludeKO(aggregateByProductForCustomerAllByMonth(checkedRows, monthList, secondName));
@@ -343,7 +344,7 @@ const App = () => {
     if (!branchName) return aggregateByBranchByMonth(filteredRows, monthList);
 
     if (branchName === '__ALL__') {
-      const checkedRows = filteredRows.filter(r => checkedItems.has(r.branch));
+      const checkedRows = filteredRows.filter(r => allModeBranches.has(r.branch));
       if (hierarchyOrder === 'orderer_first') {
         if (!secondName) return aggregateByOrdererAllByMonth(checkedRows, monthList);
         if (!thirdName) return aggregateByCustomerForOrdererAllByMonth(checkedRows, monthList, secondName);
@@ -362,7 +363,7 @@ const App = () => {
     if (!secondName) return aggregateByCustomerInBranchByMonth(filteredRows, monthList, branchName);
     if (!thirdName)  return aggregateByOrdererForCustomerByMonth(filteredRows, monthList, branchName, secondName);
     return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first'));
-  }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode, checkedItems]);
+  }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode, allModeBranches]);
 
   // テーブルデータ変更時：チェックを全選択に初期化
   useEffect(() => {
@@ -407,18 +408,19 @@ const App = () => {
     if (isLeafLevel) return;
     if (customerViewMode === 'product') return;  // 品番モード中はドリルダウン無効
     const { branchName, secondName } = activeView;
-    if (!branchName)     setActiveView({ branchName: item.name, secondName: null, thirdName: null });
-    else if (!secondName) setActiveView({ ...activeView, secondName: item.name, thirdName: null });
-    else                  setActiveView({ ...activeView, thirdName: item.name });
+    if (!branchName) {
+      if (item.name === '__ALL__') setAllModeBranches(new Set(checkedItems));
+      setActiveView({ branchName: item.name, secondName: null, thirdName: null });
+    } else if (!secondName) setActiveView({ ...activeView, secondName: item.name, thirdName: null });
+    else                    setActiveView({ ...activeView, thirdName: item.name });
   };
 
   const handleShowProductsDirectly = (item) => {
     const { branchName, secondName } = activeView;
     if (!branchName) {
-      // 部店一覧：その部店内全顧客の合算品番
+      if (item.name === '__ALL__') setAllModeBranches(new Set(checkedItems));
       setActiveView({ branchName: item.name, secondName: item.name, thirdName: null });
     } else if (!secondName) {
-      // 部店内の顧客/担当者一覧：その顧客の品番
       setActiveView({ ...activeView, secondName: item.name, thirdName: null });
     }
     setCustomerViewMode('product');
