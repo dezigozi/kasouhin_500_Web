@@ -292,10 +292,13 @@ const App = () => {
   // ===== フィルタ =====
   const filteredRows = useMemo(() => {
     if (!rawData) return [];
-    const rows = rawData.rows.filter(r =>
-      r.leaseCompany && r.leaseCompany.trim() &&
-      r.leaseCompany !== '空白' && r.leaseCompany !== 'その他'
-    );
+    const rows = rawData.rows.filter(r => {
+      if (!r.leaseCompany || !r.leaseCompany.trim()) return false;
+      if (r.leaseCompany === '空白' || r.leaseCompany === 'その他') return false;
+      const code = (r.productCode || '').toString();
+      if (code.startsWith('K-O') || code.startsWith('N-')) return false;
+      return true;
+    });
     return filterRows(rows, {
       leaseCompany: selectedLeaseCo,
       startMonth: '',
