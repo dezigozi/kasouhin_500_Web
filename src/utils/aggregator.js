@@ -361,6 +361,10 @@ export function aggregateByBranchByMonth(rows, months) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -401,6 +405,10 @@ export function aggregateByOrdererByMonth(rows, months, branchName) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -441,6 +449,10 @@ export function aggregateByCustomerByMonth(rows, months, branchName, ordererName
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -483,6 +495,10 @@ export function aggregateByCustomerInBranchByMonth(rows, months, branchName) {
     delete rest.repsSet;
     return { ...rest, count, reps };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -522,6 +538,10 @@ export function aggregateByOrdererForCustomerByMonth(rows, months, branchName, c
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -575,6 +595,10 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -622,6 +646,10 @@ export function aggregateByProductForOrdererByMonth(rows, months, branchName, or
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -671,6 +699,10 @@ export function aggregateByProductForCustomerByMonth(rows, months, branchName, c
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -720,6 +752,10 @@ export function aggregateByProductInBranchByMonth(rows, months, branchName) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -761,6 +797,10 @@ export function aggregateByCustomerAllByMonth(rows, months) {
     delete rest.repsSet;
     return { ...rest, count, reps };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -799,6 +839,10 @@ export function aggregateByOrdererAllByMonth(rows, months) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -838,6 +882,10 @@ export function aggregateByOrdererForCustomerAllByMonth(rows, months, customerNa
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -877,6 +925,10 @@ export function aggregateByCustomerForOrdererAllByMonth(rows, months, ordererNam
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -927,6 +979,10 @@ export function aggregateByProductByMonthNoBranch(rows, months, secondName, thir
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -974,6 +1030,10 @@ export function aggregateByProductForCustomerAllByMonth(rows, months, customerNa
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -1021,6 +1081,10 @@ export function aggregateByProductForOrdererAllByMonth(rows, months, ordererName
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -1069,6 +1133,10 @@ export function aggregateByProductAllByMonth(rows, months) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
+    if (a.quantity) {
+      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
+      return tot(b) - tot(a);
+    }
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
