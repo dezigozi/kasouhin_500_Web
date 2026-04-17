@@ -323,11 +323,13 @@ export function monthKeyFromRow(row) {
   return `${y}年${m}月`;
 }
 
+
 /**
  * 第1階層: 部店別集計（月別）
  */
 export function aggregateByBranchByMonth(rows, months) {
   const map = {};
+
   rows.forEach(row => {
     const key = row.branch || '(未分類)';
     if (!map[key]) {
@@ -335,12 +337,23 @@ export function aggregateByBranchByMonth(rows, months) {
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
+
   return Object.values(map).map(item => {
     const count = {};
     months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
@@ -356,6 +369,7 @@ export function aggregateByBranchByMonth(rows, months) {
 export function aggregateByOrdererByMonth(rows, months, branchName) {
   const filtered = rows.filter(r => r.branch === branchName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.ordererName || '(未分類)';
     if (!map[key]) {
@@ -363,12 +377,23 @@ export function aggregateByOrdererByMonth(rows, months, branchName) {
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
+
   return Object.values(map).map(item => {
     const count = {};
     months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
@@ -384,6 +409,7 @@ export function aggregateByOrdererByMonth(rows, months, branchName) {
 export function aggregateByCustomerByMonth(rows, months, branchName, ordererName) {
   const filtered = rows.filter(r => r.branch === branchName && r.ordererName === ordererName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.customerName || '(未分類)';
     if (!map[key]) {
@@ -391,12 +417,23 @@ export function aggregateByCustomerByMonth(rows, months, branchName, ordererName
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
+
   return Object.values(map).map(item => {
     const count = {};
     months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
@@ -412,6 +449,7 @@ export function aggregateByCustomerByMonth(rows, months, branchName, ordererName
 export function aggregateByCustomerInBranchByMonth(rows, months, branchName) {
   const filtered = rows.filter(r => r.branch === branchName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.customerName || '(未分類)';
     if (!map[key]) {
@@ -419,10 +457,20 @@ export function aggregateByCustomerInBranchByMonth(rows, months, branchName) {
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
     if (row.ordererName) map[key].repsSet.add(row.ordererName);
   });
@@ -443,6 +491,7 @@ export function aggregateByCustomerInBranchByMonth(rows, months, branchName) {
 export function aggregateByOrdererForCustomerByMonth(rows, months, branchName, customerName) {
   const filtered = rows.filter(r => r.branch === branchName && r.customerName === customerName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.ordererName || '(未分類)';
     if (!map[key]) {
@@ -450,10 +499,20 @@ export function aggregateByOrdererForCustomerByMonth(rows, months, branchName, c
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -477,6 +536,7 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
     return r.customerName === secondName && r.ordererName === thirdName;
   });
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
@@ -490,11 +550,22 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
       map[key].productName = row.productName;
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -512,6 +583,7 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
 export function aggregateByProductForOrdererByMonth(rows, months, branchName, ordererName) {
   const filtered = rows.filter(r => r.branch === branchName && r.ordererName === ordererName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
@@ -525,11 +597,22 @@ export function aggregateByProductForOrdererByMonth(rows, months, branchName, or
       map[key].productName = row.productName;
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -547,23 +630,47 @@ export function aggregateByProductForOrdererByMonth(rows, months, branchName, or
 export function aggregateByProductForCustomerByMonth(rows, months, branchName, customerName) {
   const filtered = rows.filter(r => r.branch === branchName && r.customerName === customerName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
-      map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
-      months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].quantity[mo] = 0; });
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, slipSets: {}, quantity: {} };
+      months.forEach(mo => {
+        map[key].sales[mo] = 0;
+        map[key].profit[mo] = 0;
+        map[key].slipSets[mo] = new Set();
+        map[key].quantity[mo] = 0;
+      });
     }
     if (row.productName && !map[key].productName) {
       map[key].productName = row.productName;
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
-  return Object.values(map).sort((a, b) => {
+  return Object.values(map).map(item => {
+    const count = {};
+    months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
+    const rest = { ...item };
+    delete rest.slipSets;
+    return { ...rest, count };
+  }).sort((a, b) => {
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -572,23 +679,47 @@ export function aggregateByProductForCustomerByMonth(rows, months, branchName, c
 export function aggregateByProductInBranchByMonth(rows, months, branchName) {
   const filtered = rows.filter(r => r.branch === branchName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
-      map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
-      months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].quantity[mo] = 0; });
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, slipSets: {}, quantity: {} };
+      months.forEach(mo => {
+        map[key].sales[mo] = 0;
+        map[key].profit[mo] = 0;
+        map[key].slipSets[mo] = new Set();
+        map[key].quantity[mo] = 0;
+      });
     }
     if (row.productName && !map[key].productName) {
       map[key].productName = row.productName;
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
-  return Object.values(map).sort((a, b) => {
+  return Object.values(map).map(item => {
+    const count = {};
+    months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
+    const rest = { ...item };
+    delete rest.slipSets;
+    return { ...rest, count };
+  }).sort((a, b) => {
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -596,6 +727,7 @@ export function aggregateByProductInBranchByMonth(rows, months, branchName) {
 
 export function aggregateByCustomerAllByMonth(rows, months) {
   const map = {};
+
   rows.forEach(row => {
     const key = row.customerName || '(未分類)';
     if (!map[key]) {
@@ -603,10 +735,20 @@ export function aggregateByCustomerAllByMonth(rows, months) {
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) { if (row.ordererName) map[key].repsSet.add(row.ordererName); return; }
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
     if (row.ordererName) map[key].repsSet.add(row.ordererName);
   });
@@ -626,6 +768,7 @@ export function aggregateByCustomerAllByMonth(rows, months) {
 
 export function aggregateByOrdererAllByMonth(rows, months) {
   const map = {};
+
   rows.forEach(row => {
     const key = row.ordererName || '(未分類)';
     if (!map[key]) {
@@ -633,10 +776,20 @@ export function aggregateByOrdererAllByMonth(rows, months) {
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -654,6 +807,7 @@ export function aggregateByOrdererAllByMonth(rows, months) {
 export function aggregateByOrdererForCustomerAllByMonth(rows, months, customerName) {
   const filtered = rows.filter(r => r.customerName === customerName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.ordererName || '(未分類)';
     if (!map[key]) {
@@ -661,10 +815,20 @@ export function aggregateByOrdererForCustomerAllByMonth(rows, months, customerNa
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -682,6 +846,7 @@ export function aggregateByOrdererForCustomerAllByMonth(rows, months, customerNa
 export function aggregateByCustomerForOrdererAllByMonth(rows, months, ordererName) {
   const filtered = rows.filter(r => r.ordererName === ordererName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.customerName || '(未分類)';
     if (!map[key]) {
@@ -689,10 +854,20 @@ export function aggregateByCustomerForOrdererAllByMonth(rows, months, ordererNam
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].slipSets[mo] = new Set(); });
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -715,6 +890,7 @@ export function aggregateByProductByMonthNoBranch(rows, months, secondName, thir
     return r.customerName === secondName && r.ordererName === thirdName;
   });
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
@@ -726,11 +902,22 @@ export function aggregateByProductByMonthNoBranch(rows, months, secondName, thir
     }
     if (row.productName && !map[key].productName) map[key].productName = row.productName;
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
-      if (row.documentNumber) map[key].slipSets[monthKey].add(String(row.documentNumber));
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
   return Object.values(map).map(item => {
@@ -748,21 +935,45 @@ export function aggregateByProductByMonthNoBranch(rows, months, secondName, thir
 export function aggregateByProductForCustomerAllByMonth(rows, months, customerName) {
   const filtered = rows.filter(r => r.customerName === customerName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
-      map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
-      months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].quantity[mo] = 0; });
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, slipSets: {}, quantity: {} };
+      months.forEach(mo => {
+        map[key].sales[mo] = 0;
+        map[key].profit[mo] = 0;
+        map[key].slipSets[mo] = new Set();
+        map[key].quantity[mo] = 0;
+      });
     }
     if (row.productName && !map[key].productName) map[key].productName = row.productName;
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
-  return Object.values(map).sort((a, b) => {
+  return Object.values(map).map(item => {
+    const count = {};
+    months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
+    const rest = { ...item };
+    delete rest.slipSets;
+    return { ...rest, count };
+  }).sort((a, b) => {
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -771,21 +982,45 @@ export function aggregateByProductForCustomerAllByMonth(rows, months, customerNa
 export function aggregateByProductForOrdererAllByMonth(rows, months, ordererName) {
   const filtered = rows.filter(r => r.ordererName === ordererName);
   const map = {};
+
   filtered.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
-      map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
-      months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].quantity[mo] = 0; });
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, slipSets: {}, quantity: {} };
+      months.forEach(mo => {
+        map[key].sales[mo] = 0;
+        map[key].profit[mo] = 0;
+        map[key].slipSets[mo] = new Set();
+        map[key].quantity[mo] = 0;
+      });
     }
     if (row.productName && !map[key].productName) map[key].productName = row.productName;
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
-  return Object.values(map).sort((a, b) => {
+  return Object.values(map).map(item => {
+    const count = {};
+    months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
+    const rest = { ...item };
+    delete rest.slipSets;
+    return { ...rest, count };
+  }).sort((a, b) => {
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -793,23 +1028,47 @@ export function aggregateByProductForOrdererAllByMonth(rows, months, ordererName
 
 export function aggregateByProductAllByMonth(rows, months) {
   const map = {};
+
   rows.forEach(row => {
     const key = row.productCode || '(品番なし)';
     if (!map[key]) {
-      map[key] = { name: key, productName: '', sales: {}, profit: {}, quantity: {} };
-      months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; map[key].quantity[mo] = 0; });
+      map[key] = { name: key, productName: '', sales: {}, profit: {}, slipSets: {}, quantity: {} };
+      months.forEach(mo => {
+        map[key].sales[mo] = 0;
+        map[key].profit[mo] = 0;
+        map[key].slipSets[mo] = new Set();
+        map[key].quantity[mo] = 0;
+      });
     }
     if (row.productName && !map[key].productName) {
       map[key].productName = row.productName;
     }
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+    const docNum = row.documentNumber;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
       map[key].quantity[monthKey] += row.quantity || 0;
+      if (docNum) map[key].slipSets[monthKey].add(String(docNum));
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
+      map[key].quantity['それ以前'] = (map[key].quantity['それ以前'] || 0) + (row.quantity || 0);
+      if (docNum) map[key].slipSets['それ以前'].add(String(docNum));
     }
   });
-  return Object.values(map).sort((a, b) => {
+  return Object.values(map).map(item => {
+    const count = {};
+    months.forEach(mo => { count[mo] = item.slipSets[mo] ? item.slipSets[mo].size : 0; });
+    const rest = { ...item };
+    delete rest.slipSets;
+    return { ...rest, count };
+  }).sort((a, b) => {
     const latestMonth = months[months.length - 1];
     return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
   });
@@ -820,6 +1079,7 @@ export function aggregateByProductAllByMonth(rows, months) {
  */
 export function generatePivotDataByMonth(rows, months) {
   const map = {};
+
   rows.forEach(row => {
     const key = `${row.leaseCompany}||${row.branch}||${row.ordererName}||${row.customerName}`;
     if (!map[key]) {
@@ -833,12 +1093,25 @@ export function generatePivotDataByMonth(rows, months) {
       };
       months.forEach(mo => { map[key].sales[mo] = 0; map[key].profit[mo] = 0; });
     }
+  });
+
+  rows.forEach(row => {
+    const key = `${row.leaseCompany}||${row.branch}||${row.ordererName}||${row.customerName}`;
     const monthKey = monthKeyFromRow(row);
-    if (monthKey && months.includes(monthKey)) {
-      map[key].sales[monthKey] += row.sales || 0;
-      map[key].profit[monthKey] += row.profit || 0;
+    if (!monthKey) return;
+
+    const sales = row.sales || 0;
+    const profit = row.profit || 0;
+
+    if (months.includes(monthKey)) {
+      map[key].sales[monthKey] += sales;
+      map[key].profit[monthKey] += profit;
+    } else if (months.includes('それ以前')) {
+      map[key].sales['それ以前'] += sales;
+      map[key].profit['それ以前'] += profit;
     }
   });
+
   return Object.values(map).sort((a, b) => {
     if (a.lease !== b.lease) return a.lease.localeCompare(b.lease);
     if (a.branch !== b.branch) return a.branch.localeCompare(b.branch);

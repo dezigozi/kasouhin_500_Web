@@ -29,9 +29,9 @@ const CACHE_KEY = 'kasouhin_500_data_v1';
 
 const REPORT_TITLE = '架装品 500受注レポート';
 
-/** 直近 n カ月 + 末尾に「計」 */
+/** 「それ以前」+ 直近 n カ月 + 末尾に「計」 */
 function buildMonthsWithTotal(n = 6) {
-  const monthKeys = [];
+  const monthKeys = ['それ以前'];
   const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -731,7 +731,7 @@ const App = () => {
       </aside>
 
       {/* ===== Main Content ===== */}
-      <main className="pt-20 min-h-screen px-4 pb-4 md:px-8 md:pb-8 overflow-y-auto custom-scrollbar" ref={printRef}>
+      <main className="pt-20 min-h-screen px-4 pb-4 md:px-8 md:pb-8 overflow-x-auto overflow-y-auto custom-scrollbar" ref={printRef}>
         {/* Header */}
         <header className="mb-6 md:mb-10 space-y-4 md:space-y-8 no-print">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
@@ -1346,7 +1346,7 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
 
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-left border-collapse pivot-table">
-          <thead>
+          <thead className="sticky top-0 z-20">
             <tr className="bg-slate-900 text-xl font-black text-white tracking-wide text-center">
               <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[110px] sticky left-0 bg-slate-900 z-10">
                 <button onClick={() => onSortChange('lease')} className={`w-full flex items-center justify-center gap-1 transition-colors ${pivotSort==='lease'?'text-red-300':'text-white hover:text-red-300'}`}>
@@ -1708,7 +1708,7 @@ const ProductSearchView = ({ rows }) => {
             {/* 候補ドロップダウン */}
             {isDropdownOpen && matchingCodes.length > 0 && (
               <div
-                className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden"
+                className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden"
                 onPointerDown={(e) => e.preventDefault()}
               >
                 <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 bg-slate-50">
@@ -1717,7 +1717,7 @@ const ProductSearchView = ({ rows }) => {
                     <CheckSquare size={12} /> 全て追加
                   </button>
                 </div>
-                <div className="max-h-56 overflow-y-auto custom-scrollbar">
+                <div className="max-h-48 overflow-y-auto custom-scrollbar">
                   {matchingCodes.map(([code, name]) => (
                     <button
                       key={code}
