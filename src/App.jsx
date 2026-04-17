@@ -1446,28 +1446,39 @@ const ProductSearchView = ({ rows }) => {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pre' | 'shipped'
   const [drillLease, setDrillLease] = useState(null);
   const [drillBranch, setDrillBranch] = useState(null);
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const searchRef = useRef(null);
   const resultsRef = useRef(null);
 
-  // 入力に部分一致する品番候補（全データから）
-  const matchingCodes = useMemo(() => {
-    const q = searchInput.trim().toLowerCase();
-    if (!q) return [];
-    const map = {};
-    rows.forEach(r => {
-      if (r.productCode != null) {
-        const code = r.productCode.toString();
-        if (code.toLowerCase().includes(q)) {
-          if (!map[code]) map[code] = r.productName || '';
-        }
-      }
-    });
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [rows, searchInput]);
+  // ステータス判定
+  const matchStatus = useCallback((r) => {
+    const s = Number(r.status);
+    if (statusFilter === 'pre')     return s === 4;
+    if (statusFilter === 'shipped') return s === 5 || s === 6;
+    return true;
+  }, [statusFilter]);
 
-  // フォーカスがあり候補があれば表示（コピペにも確実対応）
-  const isDropdownOpen = isInputFocused && matchingCodes.length > 0 && searchInput.trim() !== '';
+  // ステータスフィルタ済みの全行
+  const statusFilteredRows = useMemo(() => rows.filter(matchStatus), [rows, matchStatus]);
+
+  // 全品番を受注数合計の多い順にリスト化（ステータスで変動）
+  const allProductStats = useMemo(() => {
+    const map = {};
+    statusFilteredRows.forEach(r => {
+      if (r.productCode == null) return;
+      const code = r.productCode.toString();
+      if (!map[code]) map[code] = { code, name: r.productName || '', total: 0 };
+      map[code].total += Number(r.quantity) || 0;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [statusFilteredRows]);
+
+  // テキスト検索でリストを絞り込み
+  const filteredStats = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return allProductStats;
+    return allProductStats.filter(p =>
+      p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+    );
+  }, [allProductStats, searchInput]);
 
   const toggleCode = (code) => {
     setSelectedCodes(prev => {
@@ -1476,26 +1487,6 @@ const ProductSearchView = ({ rows }) => {
       else next.add(code);
       return next;
     });
-  };
-
-  const removeCode = (code) => {
-    setSelectedCodes(prev => {
-      const next = new Set(prev);
-      next.delete(code);
-      return next;
-    });
-    setConfirmedCodes(prev => {
-      const next = new Set(prev);
-      next.delete(code);
-      return next;
-    });
-    setDrillLease(null);
-    setDrillBranch(null);
-  };
-
-  const selectAll = () => {
-    const allCodes = new Set([...selectedCodes, ...matchingCodes.map(([c]) => c)]);
-    setSelectedCodes(allCodes);
   };
 
   const handleConfirm = () => {
@@ -1508,14 +1499,6 @@ const ProductSearchView = ({ rows }) => {
     }, 100);
   };
 
-  // ステータス判定
-  const matchStatus = (r) => {
-    const s = Number(r.status);
-    if (statusFilter === 'pre')     return s === 4;
-    if (statusFilter === 'shipped') return s === 5 || s === 6;
-    return true;
-  };
-
   // 品番＋ステータスでフィルタ済みの行（confirmedCodesを使用）
   const productRows = useMemo(() => {
     if (confirmedCodes.size === 0) return [];
@@ -1524,18 +1507,7 @@ const ProductSearchView = ({ rows }) => {
       confirmedCodes.has(r.productCode.toString()) &&
       matchStatus(r)
     );
-  }, [rows, confirmedCodes, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 選択品番の品名マップ
-  const productNameMap = useMemo(() => {
-    const m = {};
-    rows.forEach(r => {
-      if (r.productCode != null && r.productName) {
-        m[r.productCode.toString()] = r.productName;
-      }
-    });
-    return m;
-  }, [rows]);
+  }, [rows, confirmedCodes, matchStatus]);
 
   // 納車年月の列一覧（古い順→左）
   const deliveryMonths = useMemo(() => {
@@ -1683,101 +1655,7 @@ const ProductSearchView = ({ rows }) => {
       {/* 検索＋ステータスフィルターパネル */}
       <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-slate-100 space-y-5">
 
-        {/* 品番あいまい検索 */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">品番で検索（部分一致・複数選択可）</label>
-          <div className="relative" ref={searchRef}>
-            <div className="flex items-center bg-slate-50 border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
-              <Package size={16} className="text-slate-400 mr-2 flex-shrink-0" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => setTimeout(() => setIsInputFocused(false), 180)}
-                placeholder="例：DRV-MR（部分一致で候補が表示されます）"
-                className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 font-bold"
-              />
-              {searchInput && (
-                <button onClick={() => { setSearchInput(''); setIsInputFocused(false); }} className="text-slate-400 hover:text-slate-600 ml-1">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* 候補ドロップダウン */}
-            {isDropdownOpen && matchingCodes.length > 0 && (
-              <div
-                className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden"
-                onPointerDown={(e) => e.preventDefault()}
-              >
-                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 bg-slate-50">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{matchingCodes.length} 件一致</span>
-                  <button onClick={selectAll} className="text-[11px] font-black text-red-600 hover:text-red-700 flex items-center gap-1">
-                    <CheckSquare size={12} /> 全て追加
-                  </button>
-                </div>
-                <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                  {matchingCodes.map(([code, name]) => (
-                    <button
-                      key={code}
-                      onClick={() => toggleCode(code)}
-                      className="w-full px-4 py-2.5 text-left hover:bg-red-50 border-b border-slate-50 last:border-b-0 transition-colors flex items-center gap-3 group"
-                    >
-                      {selectedCodes.has(code)
-                        ? <CheckSquare size={15} className="text-emerald-500 flex-shrink-0" />
-                        : <Square size={15} className="text-slate-300 group-hover:text-slate-400 flex-shrink-0" />
-                      }
-                      <div>
-                        <div className="font-black text-slate-800 text-sm group-hover:text-red-600">{code}</div>
-                        {name && <div className="text-[11px] text-slate-400 font-bold">{name}</div>}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 選択中の品番タグ */}
-        {selectedCodes.size > 0 && (
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">選択中の品番</label>
-            <div className="flex flex-wrap gap-2">
-              {[...selectedCodes].map(code => (
-                <div key={code} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl">
-                  <span className="text-xs font-black text-red-700">{code}</span>
-                  {productNameMap[code] && <span className="text-[10px] text-red-400 font-bold">{productNameMap[code]}</span>}
-                  <button onClick={() => removeCode(code)} className="text-red-400 hover:text-red-600 ml-0.5">
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => { setSelectedCodes(new Set()); setConfirmedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
-                className="px-3 py-1.5 text-[11px] font-black text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-              >
-                全解除
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 確定ボタン */}
-        {selectedCodes.size > 0 && (
-          <div className="pt-2">
-            <button
-              onClick={handleConfirm}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-slate-900 text-white font-black text-sm rounded-2xl shadow-xl hover:bg-red-600 transition-all duration-300 active:scale-95"
-            >
-              <Search size={16} />
-              この品番で検索する（{selectedCodes.size}件）
-            </button>
-          </div>
-        )}
-
-        {/* ステータスフィルター */}
+        {/* ステータスフィルター（上部に移動：受注数に連動） */}
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">ステータス</label>
           <div className="flex bg-slate-100 p-1 rounded-2xl w-fit">
@@ -1795,6 +1673,82 @@ const ProductSearchView = ({ rows }) => {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 品番テキスト絞り込み */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">品番で検索（部分一致・複数選択可）</label>
+          <div className="flex items-center bg-slate-50 border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
+            <Package size={16} className="text-slate-400 mr-2 flex-shrink-0" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="例：DRV-MR（部分一致で絞り込み）"
+              className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 font-bold"
+            />
+            {searchInput && (
+              <button onClick={() => setSearchInput('')} className="text-slate-400 hover:text-slate-600 ml-1">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 品番ランキングリスト（受注数合計の多い順） */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between ml-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+              品番一覧（受注数順）
+              {searchInput && <span className="ml-2 text-red-500 normal-case font-bold">{filteredStats.length}件</span>}
+            </label>
+            {selectedCodes.size > 0 && (
+              <button
+                onClick={() => { setSelectedCodes(new Set()); setConfirmedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
+                className="text-[11px] font-black text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                全解除
+              </button>
+            )}
+          </div>
+          <div className="border border-slate-100 rounded-2xl overflow-hidden max-h-72 overflow-y-auto custom-scrollbar">
+            {filteredStats.length === 0 ? (
+              <div className="px-6 py-8 text-center text-slate-300 text-sm italic">該当する品番がありません</div>
+            ) : (
+              filteredStats.map((p, idx) => (
+                <button
+                  key={p.code}
+                  onClick={() => toggleCode(p.code)}
+                  className={`w-full px-4 py-3 text-left border-b border-slate-50 last:border-b-0 transition-colors flex items-center gap-3 group ${selectedCodes.has(p.code) ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50'}`}
+                >
+                  {selectedCodes.has(p.code)
+                    ? <CheckSquare size={15} className="text-red-500 flex-shrink-0" />
+                    : <Square size={15} className="text-slate-300 group-hover:text-slate-400 flex-shrink-0" />
+                  }
+                  <span className="text-[10px] font-black text-slate-300 w-6 text-right flex-shrink-0">{idx + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className={`font-black text-sm ${selectedCodes.has(p.code) ? 'text-red-700' : 'text-slate-800 group-hover:text-red-600'} transition-colors`}>{p.code}</span>
+                    {p.name && <span className="ml-2 text-[11px] text-slate-400 font-bold">{p.name}</span>}
+                  </div>
+                  <span className={`font-mono font-black text-sm flex-shrink-0 ${selectedCodes.has(p.code) ? 'text-red-600' : 'text-slate-500'}`}>
+                    {p.total.toLocaleString()}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 検索ボタン */}
+        <div>
+          <button
+            onClick={handleConfirm}
+            disabled={selectedCodes.size === 0}
+            className={`w-full flex items-center justify-center gap-2 py-4 font-black text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-95 ${selectedCodes.size > 0 ? 'bg-slate-900 text-white hover:bg-red-600' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+          >
+            <Search size={16} />
+            {selectedCodes.size > 0 ? `この品番で検索する（${selectedCodes.size}件）` : '品番を選択してください'}
+          </button>
         </div>
       </div>
 
