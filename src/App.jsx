@@ -389,6 +389,8 @@ const App = () => {
       data.sort((a, b) => rowTotal(b, 'profit') - rowTotal(a, 'profit'));
     } else if (pivotSort === 'lease') {
       data.sort((a, b) => (a.lease || '').localeCompare(b.lease || '', 'ja'));
+    } else if (pivotSort === 'branch') {
+      data.sort((a, b) => (a.branch || '').localeCompare(b.branch || '', 'ja'));
     } else if (pivotSort === 'orderer') {
       const totals = {};
       data.forEach(r => { totals[r.orderer || ''] = (totals[r.orderer || ''] || 0) + (r.sales[latestMonth] || 0); });
@@ -1305,6 +1307,28 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
   const monthCols = months.filter(m => m !== '計');
   const titleParts = [selectedLeaseCo !== 'ALL' ? selectedLeaseCo : null, pivotBranch !== 'ALL' ? pivotBranch : null].filter(Boolean);
   const titleSuffix = titleParts.length > 0 ? titleParts.join(' — ') : null;
+
+  // 注文者別集計（リース会社選択時のみ使用）
+  const ordererSummary = useMemo(() => {
+    const map = {};
+    data.forEach(row => {
+      const key = row.orderer || '（不明）';
+      if (!map[key]) {
+        map[key] = { orderer: key, sales: {}, profit: {} };
+        monthCols.forEach(m => { map[key].sales[m] = 0; map[key].profit[m] = 0; });
+      }
+      monthCols.forEach(m => {
+        map[key].sales[m] = (map[key].sales[m] || 0) + (row.sales[m] || 0);
+        map[key].profit[m] = (map[key].profit[m] || 0) + (row.profit[m] || 0);
+      });
+    });
+    return Object.values(map).sort((a, b) => {
+      const totalA = monthCols.reduce((s, m) => s + (a.sales[m] || 0), 0);
+      const totalB = monthCols.reduce((s, m) => s + (b.sales[m] || 0), 0);
+      return totalB - totalA;
+    });
+  }, [data, monthCols]);
+
   return (
   <div className="space-y-8 animate-fade-in-up">
     <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-slate-100 no-print">
@@ -1357,6 +1381,11 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
                 </button>
               </th>
               <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[120px]">
+                <button onClick={() => onSortChange('branch')} className={`w-full flex items-center justify-center gap-1 transition-colors ${pivotSort==='branch'?'text-red-300':'text-white hover:text-red-300'}`}>
+                  部店 {pivotSort==='branch'&&<ArrowUpDown size={12}/>}
+                </button>
+              </th>
+              <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[120px]">
                 <button onClick={() => onSortChange('orderer')} className={`w-full flex items-center justify-center gap-1 transition-colors ${pivotSort==='orderer'?'text-red-300':'text-white hover:text-red-300'}`}>
                   注文者 {pivotSort==='orderer'&&<ArrowUpDown size={12}/>}
                 </button>
@@ -1386,11 +1415,12 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
           </thead>
           <tbody className="divide-y divide-slate-300">
             {data.length === 0 ? (
-              <tr><td colSpan={2+months.length} className="px-8 py-16 text-center text-slate-300 italic">該当するデータがありません</td></tr>
+              <tr><td colSpan={3+months.length} className="px-8 py-16 text-center text-slate-300 italic">該当するデータがありません</td></tr>
             ) : (
               data.map((row, idx) => (
                 <tr key={idx} className="hover:bg-red-50/50 transition-colors">
                   <td className="px-4 py-3 border-r border-slate-300 sticky left-0 bg-white z-10 font-black text-slate-800 text-sm whitespace-nowrap">{row.lease}</td>
+                  <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm">{row.branch}</td>
                   <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm">{row.orderer}</td>
                   <td className="px-4 py-3 border-r border-slate-300">
                     <div className="flex items-center gap-1.5">
@@ -1437,6 +1467,87 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
         </table>
       </div>
     </div>
+
+    {/* 注文者別ランキング（リース会社選択時のみ表示） */}
+    {selectedLeaseCo !== 'ALL' && ordererSummary.length > 0 && (
+      <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center gap-3">
+          <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100"><Store size={20} /></div>
+          <div>
+            <h3 className="font-black text-slate-800 text-xl tracking-tighter">
+              注文者別 受注金額ランキング
+              <span className="text-indigo-500 ml-2 text-base">— {selectedLeaseCo}</span>
+            </h3>
+            <p className="text-[10px] font-bold text-indigo-500 mt-0.5 uppercase tracking-widest italic">
+              Orderer Ranking by Sales &middot; {ordererSummary.length} orderers
+              {amountUnit === 'thousand' && <span className="ml-2 text-amber-500 normal-case">（単位：千円）</span>}
+            </p>
+          </div>
+        </div>
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse pivot-table">
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-indigo-900 text-sm font-black text-white tracking-wide text-center">
+                <th className="px-4 py-4 text-center border-r border-indigo-800 w-14">順位</th>
+                <th className="px-4 py-4 text-center border-r border-indigo-800 min-w-[160px]">注文者</th>
+                {months.map(month =>
+                  month === '計' ? (
+                    <th key={month} className="px-3 py-4 border-l border-indigo-700 bg-indigo-800 min-w-[130px]">
+                      <div className="flex flex-col gap-1 items-center">
+                        <span className="text-xs font-black text-slate-200">計（売上）</span>
+                        {showProfit && <span className="text-[11px] font-black text-emerald-300">計（粗利）</span>}
+                      </div>
+                    </th>
+                  ) : (
+                    <th key={month} className="px-3 py-4 border-l border-indigo-800 min-w-[120px] whitespace-nowrap">{month}</th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {ordererSummary.map((row, idx) => {
+                const totalSales = monthCols.reduce((s, m) => s + (row.sales[m] || 0), 0);
+                const totalProfit = monthCols.reduce((s, m) => s + (row.profit[m] || 0), 0);
+                return (
+                  <tr key={idx} className={`hover:bg-indigo-50/40 transition-colors ${idx === 0 ? 'bg-amber-50/50' : ''}`}>
+                    <td className="px-4 py-3 border-r border-slate-200 text-center font-black text-slate-500 text-sm">
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}
+                    </td>
+                    <td className="px-4 py-3 border-r border-slate-200 font-black text-slate-800 text-sm whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0" />
+                        {row.orderer}
+                      </div>
+                    </td>
+                    {months.map(month => {
+                      let s, p;
+                      if (month === '計') { s = totalSales; p = totalProfit; }
+                      else { s = row.sales[month] || 0; p = row.profit[month] || 0; }
+                      return (
+                        <td key={month} className={`px-3 py-3 border-l border-slate-200 ${month === '計' ? 'bg-indigo-50/30' : 'bg-white/40'}`}>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-[9px] font-black text-slate-400">売上</span>
+                              <span className="font-mono font-black text-slate-700 text-[13px]">{fmtAmt(s)}</span>
+                            </div>
+                            {showProfit && (
+                              <div className="flex justify-between items-baseline border-t border-slate-50 pt-0.5">
+                                <span className="text-[9px] font-black text-slate-400">粗利</span>
+                                <span className="font-mono font-black text-emerald-600 text-[13px]">{fmtAmt(p)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
   </div>
   );
 };
