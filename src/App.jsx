@@ -1872,14 +1872,24 @@ const ProductSearchView = ({ rows }) => {
               品番一覧（受注数順）
               {searchInput && <span className="ml-2 text-red-500 normal-case font-bold">{filteredStats.length}件</span>}
             </label>
-            {selectedCodes.size > 0 && (
-              <button
-                onClick={() => { setSelectedCodes(new Set()); setConfirmedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
-                className="text-[11px] font-black text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                全解除
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {filteredStats.length > 0 && filteredStats.some(p => !selectedCodes.has(p.code)) && (
+                <button
+                  onClick={() => setSelectedCodes(prev => { const next = new Set(prev); filteredStats.forEach(p => next.add(p.code)); return next; })}
+                  className="text-[11px] font-black text-red-500 hover:text-red-700 transition-colors"
+                >
+                  全選択
+                </button>
+              )}
+              {selectedCodes.size > 0 && (
+                <button
+                  onClick={() => { setSelectedCodes(new Set()); setConfirmedCodes(new Set()); setDrillLease(null); setDrillBranch(null); }}
+                  className="text-[11px] font-black text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  全解除
+                </button>
+              )}
+            </div>
           </div>
           <div className="border border-slate-100 rounded-2xl overflow-hidden max-h-72 overflow-y-auto custom-scrollbar">
             {filteredStats.length === 0 ? (
