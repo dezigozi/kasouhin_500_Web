@@ -960,6 +960,62 @@ const LoadingScreen = () => (
   </div>
 );
 
+// ===== 長押しコピーコンポーネント =====
+const CopyableText = ({ text, children, className }) => {
+  const [showToast, setShowToast] = useState(false);
+  const pressTimer = useRef(null);
+  const toastTimer = useRef(null);
+
+  const start = useCallback(() => {
+    pressTimer.current = setTimeout(async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setShowToast(true);
+      clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setShowToast(false), 1500);
+    }, 500);
+  }, [text]);
+
+  const cancel = useCallback(() => {
+    clearTimeout(pressTimer.current);
+  }, []);
+
+  useEffect(() => () => {
+    clearTimeout(pressTimer.current);
+    clearTimeout(toastTimer.current);
+  }, []);
+
+  return (
+    <span
+      className={`relative${className ? ' ' + className : ''}`}
+      style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
+      onMouseDown={start}
+      onMouseUp={cancel}
+      onMouseLeave={cancel}
+      onTouchStart={start}
+      onTouchEnd={cancel}
+      onTouchCancel={cancel}
+      onContextMenu={e => e.preventDefault()}
+    >
+      {children ?? text}
+      {showToast && (
+        <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+          コピーしました
+        </span>
+      )}
+    </span>
+  );
+};
+
 // ===== ダッシュボードビュー =====
 const DashboardView = ({
   data, months, activeView, hierarchyOrder, onHierarchyOrderChange,
@@ -1215,7 +1271,7 @@ const DashboardView = ({
                   </td>
                   <td className="px-3 md:px-8 py-4">
                     <div className="font-black text-slate-800 text-sm md:text-lg group-hover:text-red-600 transition-colors flex items-center gap-2">
-                      {item.name}
+                      <CopyableText text={item.name}>{item.name}</CopyableText>
                       {!isLeafLevel && !isCustomerSearchMode && !isProductMode && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onShowProductsDirectly(item); }}
@@ -1419,13 +1475,13 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
             ) : (
               data.map((row, idx) => (
                 <tr key={idx} className="hover:bg-red-50/50 transition-colors">
-                  <td className="px-4 py-3 border-r border-slate-300 sticky left-0 bg-white z-10 font-black text-slate-800 text-sm whitespace-nowrap">{row.lease}</td>
-                  <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm">{row.branch}</td>
-                  <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm">{row.orderer}</td>
+                  <td className="px-4 py-3 border-r border-slate-300 sticky left-0 bg-white z-10 font-black text-slate-800 text-sm whitespace-nowrap"><CopyableText text={row.lease}>{row.lease}</CopyableText></td>
+                  <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm"><CopyableText text={row.branch}>{row.branch}</CopyableText></td>
+                  <td className="px-4 py-3 border-r border-slate-300 font-black text-slate-800 text-sm"><CopyableText text={row.orderer}>{row.orderer}</CopyableText></td>
                   <td className="px-4 py-3 border-r border-slate-300">
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0" />
-                      <span className="font-black text-slate-800 text-sm">{row.customer}</span>
+                      <CopyableText text={row.customer} className="font-black text-slate-800 text-sm">{row.customer}</CopyableText>
                     </div>
                   </td>
                   {months.map((month, mIdx) => {
