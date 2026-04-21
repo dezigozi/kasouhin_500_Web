@@ -965,29 +965,46 @@ const CopyableText = ({ text, children, className }) => {
   const [showToast, setShowToast] = useState(false);
   const pressTimer = useRef(null);
   const toastTimer = useRef(null);
+  const lastTouchTime = useRef(0);
 
-  const start = useCallback(() => {
-    pressTimer.current = setTimeout(async () => {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
-      setShowToast(true);
-      clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setShowToast(false), 1500);
-    }, 500);
+  const doCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setShowToast(true);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setShowToast(false), 1500);
   }, [text]);
 
-  const cancel = useCallback(() => {
+  // デスクトップ：マウス長押し（600ms）
+  const startMouse = useCallback(() => {
+    if (Date.now() - lastTouchTime.current < 1000) return;
+    pressTimer.current = setTimeout(doCopy, 600);
+  }, [doCopy]);
+
+  const cancelMouse = useCallback(() => {
     clearTimeout(pressTimer.current);
   }, []);
+
+  // iOS/Android: contextmenu イベントが長押しで発火 → タイムスタンプで区別
+  const handleTouchStart = useCallback(() => {
+    lastTouchTime.current = Date.now();
+  }, []);
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+    if (Date.now() - lastTouchTime.current < 1000) {
+      doCopy();
+    }
+  }, [doCopy]);
 
   useEffect(() => () => {
     clearTimeout(pressTimer.current);
@@ -998,13 +1015,11 @@ const CopyableText = ({ text, children, className }) => {
     <span
       className={`relative${className ? ' ' + className : ''}`}
       style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
-      onMouseDown={start}
-      onMouseUp={cancel}
-      onMouseLeave={cancel}
-      onTouchStart={start}
-      onTouchEnd={cancel}
-      onTouchCancel={cancel}
-      onContextMenu={e => e.preventDefault()}
+      onMouseDown={startMouse}
+      onMouseUp={cancelMouse}
+      onMouseLeave={cancelMouse}
+      onTouchStart={handleTouchStart}
+      onContextMenu={handleContextMenu}
     >
       {children ?? text}
       {showToast && (
