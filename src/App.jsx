@@ -686,6 +686,17 @@ const App = () => {
             <Package size={20} />
             <span className="font-black text-sm tracking-tight">品番検索レポート</span>
           </button>
+          <button
+            onClick={() => { setViewMode('invoice_report'); setSelectedLeaseCo('ALL'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 w-full p-4 rounded-2xl transition-all duration-300 ${
+              viewMode === 'invoice_report'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 scale-105'
+                : 'text-slate-400 hover:bg-slate-800'
+            }`}
+          >
+            <FileText size={20} />
+            <span className="font-black text-sm tracking-tight">粗利収支分析</span>
+          </button>
 
           <div className="pt-8 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
             Reports Export
@@ -795,57 +806,59 @@ const App = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">金額単位</label>
-              <div className="flex bg-slate-100 p-1 rounded-2xl">
-                {['yen', 'thousand'].map(u => (
-                  <button key={u} onClick={() => setAmountUnit(u)}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${amountUnit === u ? 'bg-white text-slate-800 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
-                    {u === 'yen' ? '円' : '千円'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">粗利表示</label>
-              <button onClick={() => setShowProfit(p => !p)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all duration-300 ${showProfit ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>
-                {showProfit ? <Eye size={14} /> : <EyeOff size={14} />}
-                {showProfit ? 'ON' : 'OFF'}
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">顧客検索</label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
-                  <input
-                    type="text"
-                    value={customerSearchQuery}
-                    onChange={e => setCustomerSearchQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSearchCustomer()}
-                    placeholder="顧客名で検索..."
-                    className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
-                  />
+            {viewMode !== 'invoice_report' && (
+              <>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">金額単位</label>
+                  <div className="flex bg-slate-100 p-1 rounded-2xl">
+                    {['yen', 'thousand'].map(u => (
+                      <button key={u} onClick={() => setAmountUnit(u)}
+                        className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${amountUnit === u ? 'bg-white text-slate-800 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
+                        {u === 'yen' ? '円' : '千円'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  onClick={handleSearchCustomer}
-                  disabled={!customerSearchQuery.trim()}
-                  className="p-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 disabled:bg-slate-300 transition-colors"
-                >
-                  <Search size={16} />
-                </button>
-              </div>
-              {isSearchDropdownOpen && customerSearchResults.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
-                  {customerSearchResults.map((result, idx) => (
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">粗利表示</label>
+                  <button onClick={() => setShowProfit(p => !p)}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all duration-300 ${showProfit ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>
+                    {showProfit ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {showProfit ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">顧客検索</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
+                      <input
+                        type="text"
+                        value={customerSearchQuery}
+                        onChange={e => setCustomerSearchQuery(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSearchCustomer()}
+                        placeholder="顧客名で検索..."
+                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
+                      />
+                    </div>
                     <button
-                      key={idx}
-                      onClick={() => handleSelectCustomer(result)}
-                      className="w-full px-4 py-3 text-left hover:bg-red-50 border-b border-slate-100 last:border-b-0 transition-colors group"
+                      onClick={handleSearchCustomer}
+                      disabled={!customerSearchQuery.trim()}
+                      className="p-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 disabled:bg-slate-300 transition-colors"
                     >
-                      <div className="font-black text-slate-800 text-sm group-hover:text-red-600">{result.customerName}</div>
+                      <Search size={16} />
+                    </button>
+                  </div>
+                  {isSearchDropdownOpen && customerSearchResults.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
+                      {customerSearchResults.map((result, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectCustomer(result)}
+                          className="w-full px-4 py-3 text-left hover:bg-red-50 border-b border-slate-100 last:border-b-0 transition-colors group"
+                        >
+                          <div className="font-black text-slate-800 text-sm group-hover:text-red-600">{result.customerName}</div>
                       <div className="text-xs text-slate-500 mt-1">
                         {result.branchName} {result.leaseCompany && `• ${result.leaseCompany}`}
                       </div>
@@ -854,6 +867,8 @@ const App = () => {
                 </div>
               )}
             </div>
+              </>
+            )}
           </div>
         </header>
 
@@ -904,6 +919,8 @@ const App = () => {
               />
             ) : viewMode === 'product_search' ? (
               <ProductSearchView rows={filteredRows} />
+            ) : viewMode === 'invoice_report' ? (
+              <InvoiceReportView rows={filteredRows} />
             ) : (
               <PivotView
                 data={pivotData} months={months} branches={branches}
@@ -2123,6 +2140,313 @@ const ProductSearchView = ({ rows }) => {
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// ===== 粗利収支分析ビュー =====
+const InvoiceReportView = ({ rows }) => {
+  const [filterLease, setFilterLease] = useState('ALL');
+  const [filterBranch, setFilterBranch] = useState('ALL');
+  const [filterOrderer, setFilterOrderer] = useState('ALL');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [maxMarginInput, setMaxMarginInput] = useState('');
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+
+  // 伝票番号でグループ化して集計
+  const invoices = useMemo(() => {
+    const map = {};
+    rows.forEach(r => {
+      const docNum = r.documentNumber || r.Documentnumber || '';
+      if (!docNum) return;
+      if (!map[docNum]) {
+        map[docNum] = {
+          documentNumber: docNum,
+          date: r.date || '',
+          leaseCompany: r.leaseCompany || '',
+          branch: r.branch || '',
+          ordererName: r.ordererName || '',
+          customerName: r.customerName || '',
+          sales: 0,
+          profit: 0,
+        };
+      }
+      map[docNum].sales += Number(r.sales) || 0;
+      map[docNum].profit += Number(r.profit) || 0;
+    });
+    return Object.values(map);
+  }, [rows]);
+
+  // リース会社でフィルタ後のデータ
+  const invoicesForLease = useMemo(() => {
+    if (filterLease === 'ALL') return invoices;
+    return invoices.filter(inv => inv.leaseCompany === filterLease);
+  }, [invoices, filterLease]);
+
+  // 支店フィルタ後のデータ
+  const invoicesForBranch = useMemo(() => {
+    if (filterBranch === 'ALL') return invoicesForLease;
+    return invoicesForLease.filter(inv => inv.branch === filterBranch);
+  }, [invoicesForLease, filterBranch]);
+
+  // フィルター選択肢（リース会社でフィルタ後のデータから支店を抽出）
+  const branchOptions = useMemo(() => [...new Set(invoicesForLease.map(i => i.branch).filter(Boolean))].sort(), [invoicesForLease]);
+
+  // 支店でもフィルタ後のデータから担当者を抽出
+  const ordererOptions = useMemo(() => [...new Set(invoicesForBranch.map(i => i.ordererName).filter(Boolean))].sort(), [invoicesForBranch]);
+
+  // フィルター適用
+  const filteredInvoices = useMemo(() => {
+    const maxMgn = maxMarginInput !== '' ? parseFloat(maxMarginInput) : null;
+    return invoices.filter(inv => {
+      if (filterLease !== 'ALL' && inv.leaseCompany !== filterLease) return false;
+      if (filterBranch !== 'ALL' && inv.branch !== filterBranch) return false;
+      if (filterOrderer !== 'ALL' && inv.ordererName !== filterOrderer) return false;
+      if (filterCustomer.trim() && !inv.customerName.includes(filterCustomer.trim())) return false;
+      if (maxMgn !== null) {
+        const mgn = inv.sales > 0 ? (inv.profit / inv.sales) * 100 : null;
+        if (mgn === null || mgn > maxMgn) return false;
+      }
+      return true;
+    });
+  }, [invoices, filterLease, filterBranch, filterOrderer, filterCustomer, maxMarginInput]);
+
+  // ソート
+  const sortedInvoices = useMemo(() => {
+    const sorted = [...filteredInvoices];
+    sorted.sort((a, b) => {
+      const va = a[sortKey], vb = b[sortKey];
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+      const sa = String(va || ''), sb = String(vb || '');
+      return sortDir === 'asc' ? sa.localeCompare(sb, 'ja') : sb.localeCompare(sa, 'ja');
+    });
+    return sorted;
+  }, [filteredInvoices, sortKey, sortDir]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const SortBtn = ({ col }) => (
+    <button onClick={() => handleSort(col)} className="inline-flex items-center gap-0.5 hover:text-red-300 transition-colors">
+      <ArrowUpDown size={11} className={sortKey === col ? 'text-red-300' : ''} />
+    </button>
+  );
+
+  const fmtYen = (n) => `¥${Math.round(n || 0).toLocaleString()}`;
+  const margin = (profit, sales) => sales > 0 ? ((profit / sales) * 100).toFixed(1) : null;
+
+  const totalSales = filteredInvoices.reduce((s, r) => s + r.sales, 0);
+  const totalProfit = filteredInvoices.reduce((s, r) => s + r.profit, 0);
+  const totalMargin = margin(totalProfit, totalSales);
+
+  const handleExportCsv = () => {
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const headers = ['受注日', '伝票ナンバー', 'リース会社', '部店', '注文者', '顧客名', '売上金額', '粗利金額', '粗利率(%)'];
+    const lines = [headers.map(q).join(',')];
+    sortedInvoices.forEach(inv => {
+      const dateStr = typeof inv.date === 'string' ? inv.date.split(' ')[0] : inv.date;
+      const mgn = inv.sales > 0 ? ((inv.profit / inv.sales) * 100).toFixed(1) : '';
+      lines.push([
+        q(dateStr), q(inv.documentNumber), q(inv.leaseCompany), q(inv.branch),
+        q(inv.ordererName), q(inv.customerName),
+        Math.round(inv.sales), Math.round(inv.profit), mgn,
+      ].join(','));
+    });
+    const csv = lines.join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `粗利収支分析_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectCls = 'bg-slate-100 text-slate-700 rounded-xl px-3 py-2 text-xs font-bold border-none outline-none focus:ring-2 focus:ring-red-400';
+
+  const handleCellDoubleClick = (e) => {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(e.currentTarget);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  return (
+    <div className="p-4 md:p-8 space-y-6">
+      {/* ヘッダー */}
+      <div className="flex items-center gap-3">
+        <div className="bg-red-500 p-2.5 rounded-xl text-white shadow-lg shadow-red-500/20">
+          <FileText size={22} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">粗利収支分析</h2>
+          <p className="text-xs text-slate-400 font-bold mt-0.5">伝票（案件）単位での売上・粗利を確認</p>
+        </div>
+        <button
+          onClick={handleExportCsv}
+          disabled={sortedInvoices.length === 0}
+          className="ml-auto flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black hover:bg-red-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
+        >
+          <FileSpreadsheet size={15} /> CSV出力 ({sortedInvoices.length.toLocaleString()}件)
+        </button>
+      </div>
+
+      {/* フィルターバー */}
+      <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-wrap gap-3 items-center">
+        <select value={filterBranch} onChange={e => { setFilterBranch(e.target.value); setFilterOrderer('ALL'); }} className={selectCls}>
+          <option value="ALL">部店：すべて</option>
+          {branchOptions.map(v => <option key={v} value={v}>{v}</option>)}
+        </select>
+        <select value={filterOrderer} onChange={e => setFilterOrderer(e.target.value)} className={selectCls}>
+          <option value="ALL">担当者：すべて</option>
+          {ordererOptions.map(v => <option key={v} value={v}>{v}</option>)}
+        </select>
+        <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
+          <Search size={14} className="text-slate-400" />
+          <input
+            type="text"
+            value={filterCustomer}
+            onChange={e => setFilterCustomer(e.target.value)}
+            placeholder="顧客名で絞り込み..."
+            className="bg-transparent text-xs font-bold text-slate-700 outline-none w-40 placeholder:text-slate-400"
+          />
+          {filterCustomer && (
+            <button onClick={() => setFilterCustomer('')} className="text-slate-400 hover:text-slate-600">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
+          <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">粗利率</span>
+          <input
+            type="number"
+            value={maxMarginInput}
+            onChange={e => setMaxMarginInput(e.target.value)}
+            placeholder="—"
+            min="-100"
+            max="100"
+            step="1"
+            className="bg-transparent text-xs font-bold text-slate-700 outline-none w-12 text-center placeholder:text-slate-400"
+          />
+          <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">%以下</span>
+          {maxMarginInput !== '' && (
+            <button onClick={() => setMaxMarginInput('')} className="text-slate-400 hover:text-slate-600">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <div className="ml-auto text-xs text-slate-400 font-bold">
+          {filteredInvoices.length.toLocaleString()} 件
+        </div>
+      </div>
+
+      {/* 合計サマリー */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-red-50 rounded-3xl p-5 shadow-sm border border-red-100">
+          <div className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2">伝票件数</div>
+          <div className="font-mono font-black text-red-700 text-3xl">{filteredInvoices.length.toLocaleString()}</div>
+          <div className="text-[10px] font-bold text-red-500 mt-1">件</div>
+        </div>
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">合計売上</div>
+          <div className="font-mono font-black text-red-700 text-xl">{fmtYen(totalSales)}</div>
+        </div>
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">合計粗利</div>
+          <div className="font-mono font-black text-emerald-600 text-xl">{fmtYen(totalProfit)}</div>
+        </div>
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">平均粗利率</div>
+          <div className="font-mono font-black text-slate-700 text-xl">{totalMargin !== null ? `${totalMargin}%` : '—'}</div>
+        </div>
+      </div>
+
+      {/* テーブル */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-x-auto">
+        <table className="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-900 text-white text-[11px] font-black uppercase tracking-wider">
+              <th className="px-4 py-4 rounded-tl-3xl whitespace-nowrap">
+                受注日 <SortBtn col="date" />
+              </th>
+              <th className="px-4 py-4 whitespace-nowrap">
+                伝票ナンバー <SortBtn col="documentNumber" />
+              </th>
+              <th className="px-4 py-4 whitespace-nowrap">
+                リース会社 <SortBtn col="leaseCompany" />
+              </th>
+              <th className="px-4 py-4 whitespace-nowrap">
+                部店 <SortBtn col="branch" />
+              </th>
+              <th className="px-4 py-4 whitespace-nowrap">
+                注文者 <SortBtn col="ordererName" />
+              </th>
+              <th className="px-4 py-4 whitespace-nowrap">
+                顧客名 <SortBtn col="customerName" />
+              </th>
+              <th className="px-4 py-4 text-right whitespace-nowrap">
+                売上金額 <SortBtn col="sales" />
+              </th>
+              <th className="px-4 py-4 text-right whitespace-nowrap">
+                粗利金額 <SortBtn col="profit" />
+              </th>
+              <th className="px-4 py-4 text-right rounded-tr-3xl whitespace-nowrap">
+                粗利率
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {sortedInvoices.length === 0 ? (
+              <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-300 italic">該当するデータがありません</td></tr>
+            ) : (
+              sortedInvoices.map((inv, idx) => {
+                const mgn = margin(inv.profit, inv.sales);
+                const isLoss = inv.profit < 0;
+                const isLow = mgn !== null && parseFloat(mgn) < 10;
+                return (
+                  <tr key={idx} className={`hover:bg-red-50/20 transition-colors ${isLoss ? 'bg-rose-50/40' : ''}`}>
+                    <td className="px-4 py-3 text-slate-500 text-xs font-mono whitespace-nowrap">
+                      {typeof inv.date === 'string' ? inv.date.split(' ')[0] : inv.date}
+                    </td>
+                    <td className="px-4 py-3 font-mono font-black text-slate-700 text-xs whitespace-nowrap select-text cursor-text hover:bg-slate-50 transition-colors rounded" onDoubleClick={handleCellDoubleClick}>
+                      {inv.documentNumber}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 text-xs font-bold whitespace-nowrap">
+                      {inv.leaseCompany}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 text-xs font-bold whitespace-nowrap">
+                      {inv.branch}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 text-xs font-bold whitespace-nowrap">
+                      {inv.ordererName}
+                    </td>
+                    <td className="px-4 py-3 font-bold text-slate-800 text-xs select-text cursor-text hover:bg-slate-50 transition-colors rounded" onDoubleClick={handleCellDoubleClick}>
+                      {inv.customerName}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-black text-red-700 text-xs whitespace-nowrap">
+                      {fmtYen(inv.sales)}
+                    </td>
+                    <td className={`px-4 py-3 text-right font-mono font-black text-xs whitespace-nowrap ${isLoss ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {fmtYen(inv.profit)}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {mgn !== null ? (
+                        <span className={`px-2 py-1 rounded-lg text-[11px] font-black ${isLoss ? 'bg-rose-100 text-rose-700' : isLow ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                          {mgn}%
+                        </span>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
