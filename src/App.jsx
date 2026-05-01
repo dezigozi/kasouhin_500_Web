@@ -295,8 +295,12 @@ const App = () => {
     const rows = rawData.rows.filter(r => {
       if (!r.leaseCompany || !r.leaseCompany.trim()) return false;
       if (r.leaseCompany === '空白' || r.leaseCompany === 'その他') return false;
-      const code = (r.productCode || '').toString();
-      if (code.startsWith('K-O') || code.startsWith('N-')) return false;
+      
+      // 粗利収支分析 (invoice_report) の場合のみ全品番を含め、それ以外では K-O と N- を除外する
+      if (viewMode !== 'invoice_report') {
+        const code = (r.productCode || '').toString();
+        if (code.startsWith('K-O') || code.startsWith('N-')) return false;
+      }
       return true;
     });
     return filterRows(rows, {
@@ -304,7 +308,7 @@ const App = () => {
       startMonth: '',
       endMonth: '',
     });
-  }, [rawData, selectedLeaseCo]);
+  }, [rawData, selectedLeaseCo, viewMode]);
 
   /** 表の列: 直近6カ月 + 「計」（データ読込のたびに基準月を更新） */
   const months = useMemo(() => buildMonthsWithTotal(6), []);

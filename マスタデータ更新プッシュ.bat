@@ -17,7 +17,7 @@ if %errorlevel% == 0 (
     exit /b 1
 )
 
-echo [1/3] Checking changed files...
+echo [1/4] Checking changed files...
 git status public/data/master_data.csv
 echo.
 
@@ -29,7 +29,7 @@ del "%~dp0_date_tmp.txt" > nul 2>&1
 echo Commit message: data: master_data.csv updated %TODAY%
 echo.
 
-echo [2/3] Committing...
+echo [2/4] Committing...
 git add public/data/master_data.csv
 git commit -m "data: master_data.csv updated %TODAY%"
 if %errorlevel% neq 0 (
@@ -41,7 +41,18 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [3/3] Pushing to GitHub...
+echo [3/4] Pulling latest changes from GitHub...
+git pull origin main --rebase
+if %errorlevel% neq 0 (
+    echo.
+    echo [ERROR] Pull failed. Please check for conflicts.
+    echo Press any key to exit...
+    pause > nul
+    exit /b 1
+)
+
+echo.
+echo [4/4] Pushing to GitHub...
 git push origin main
 if %errorlevel% neq 0 (
     echo.
