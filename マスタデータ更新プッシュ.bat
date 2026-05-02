@@ -1,4 +1,19 @@
 @echo off
+REM =============================================================================
+REM  マスタデータ更新プッシュ.bat（架装品 500 WEB）
+REM
+REM  目的:
+REM    public/data/master_data.csv の変更だけをコミットし、GitHub main へ push
+REM    する（Vercel 連携で本番反映）。
+REM
+REM  手順の考え方:
+REM   1) CSV に差分があることだけ確認
+REM   2) その CSV だけをコミット
+REM   3) push 前に git pull --rebase でリモートの先行コミットを取り込む
+REM      → 「rejected (fetch first)」を防ぐ。他ファイルの未コミット変更があると
+REM        rebase が失敗することがある。その場合は git stash -u 後に再実行。
+REM   4) git push origin main
+REM =============================================================================
 cd /d "%~dp0"
 
 echo =========================================
@@ -41,11 +56,14 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [3/4] Pulling latest changes from GitHub...
-git pull origin main --rebase
+REM リモートだけが進んでいると素の push が拒否されるため、必ずこの直後に push する
+echo [3/4] Pulling latest from GitHub ^(before push^)...
+git pull --rebase origin main
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] Pull failed. Please check for conflicts.
+    echo [ERROR] Pull failed. Other uncommitted files may block rebase.
+    echo         Try: git stash -u
+    echo         Then run this script again ^(stash pop after success if needed^).
     echo Press any key to exit...
     pause > nul
     exit /b 1
