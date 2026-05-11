@@ -19,6 +19,7 @@ import {
   searchCustomers,
   generatePivotDataByMonth, calcYoY, calcMargin, formatCurrencyFull,
   generateCsvContentByMonth,
+  hideProductCodeInDetail,
 } from './utils/aggregator';
 
 // GAS Web App URL（.env の VITE_GAS_URL に設定）
@@ -295,12 +296,6 @@ const App = () => {
     const rows = rawData.rows.filter(r => {
       if (!r.leaseCompany || !r.leaseCompany.trim()) return false;
       if (r.leaseCompany === '空白' || r.leaseCompany === 'その他') return false;
-      
-      // 粗利収支分析 (invoice_report) の場合のみ全品番を含め、それ以外では K-O と N- を除外する
-      if (viewMode !== 'invoice_report') {
-        const code = (r.productCode || '').toString();
-        if (code.startsWith('K-O') || code.startsWith('N-')) return false;
-      }
       return true;
     });
     return filterRows(rows, {
@@ -308,7 +303,7 @@ const App = () => {
       startMonth: '',
       endMonth: '',
     });
-  }, [rawData, selectedLeaseCo, viewMode]);
+  }, [rawData, selectedLeaseCo]);
 
   /** 表の列: 直近6カ月 + 「計」（データ読込のたびに基準月を更新） */
   const months = useMemo(() => buildMonthsWithTotal(6), []);
@@ -330,22 +325,22 @@ const App = () => {
     if (!filteredRows.length || !monthList.length) return [];
     const { branchName, secondName, thirdName } = activeView;
 
-    const excludeKO = (rows) => rows.filter(r => !String(r.name || '').startsWith('K-O'));
+    const excludeHiddenProductRows = (rows) => rows.filter(r => !hideProductCodeInDetail(r.name));
 
     if (customerViewMode === 'product' && branchName && secondName && !thirdName) {
       if (branchName === '__ALL__') {
         const checkedRows = filteredRows.filter(r => allModeBranches.has(r.branch));
-        if (secondName === '__ALL__') return excludeKO(aggregateByProductAllByMonth(checkedRows, monthList));
-        if (hierarchyOrder === 'orderer_first') return excludeKO(aggregateByProductForOrdererAllByMonth(checkedRows, monthList, secondName));
-        return excludeKO(aggregateByProductForCustomerAllByMonth(checkedRows, monthList, secondName));
+        if (secondName === '__ALL__') return excludeHiddenProductRows(aggregateByProductAllByMonth(checkedRows, monthList));
+        if (hierarchyOrder === 'orderer_first') return excludeHiddenProductRows(aggregateByProductForOrdererAllByMonth(checkedRows, monthList, secondName));
+        return excludeHiddenProductRows(aggregateByProductForCustomerAllByMonth(checkedRows, monthList, secondName));
       }
       if (branchName === secondName) {
-        return excludeKO(aggregateByProductInBranchByMonth(filteredRows, monthList, branchName));
+        return excludeHiddenProductRows(aggregateByProductInBranchByMonth(filteredRows, monthList, branchName));
       }
       if (hierarchyOrder === 'orderer_first') {
-        return excludeKO(aggregateByProductForOrdererByMonth(filteredRows, monthList, branchName, secondName));
+        return excludeHiddenProductRows(aggregateByProductForOrdererByMonth(filteredRows, monthList, branchName, secondName));
       }
-      return excludeKO(aggregateByProductForCustomerByMonth(filteredRows, monthList, branchName, secondName));
+      return excludeHiddenProductRows(aggregateByProductForCustomerByMonth(filteredRows, monthList, branchName, secondName));
     }
 
     if (!branchName) return aggregateByBranchByMonth(filteredRows, monthList);
@@ -355,21 +350,21 @@ const App = () => {
       if (hierarchyOrder === 'orderer_first') {
         if (!secondName) return aggregateByOrdererAllByMonth(checkedRows, monthList);
         if (!thirdName) return aggregateByCustomerForOrdererAllByMonth(checkedRows, monthList, secondName);
-        return excludeKO(aggregateByProductByMonthNoBranch(checkedRows, monthList, secondName, thirdName, 'orderer_first'));
+        return excludeHiddenProductRows(aggregateByProductByMonthNoBranch(checkedRows, monthList, secondName, thirdName, 'orderer_first'));
       }
       if (!secondName) return aggregateByCustomerAllByMonth(checkedRows, monthList);
       if (!thirdName) return aggregateByOrdererForCustomerAllByMonth(checkedRows, monthList, secondName);
-      return excludeKO(aggregateByProductByMonthNoBranch(checkedRows, monthList, secondName, thirdName, 'customer_first'));
+      return excludeHiddenProductRows(aggregateByProductByMonthNoBranch(checkedRows, monthList, secondName, thirdName, 'customer_first'));
     }
 
     if (hierarchyOrder === 'orderer_first') {
       if (!secondName) return aggregateByOrdererByMonth(filteredRows, monthList, branchName);
       if (!thirdName)  return aggregateByCustomerByMonth(filteredRows, monthList, branchName, secondName);
-      return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'orderer_first'));
+      return excludeHiddenProductRows(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'orderer_first'));
     }
     if (!secondName) return aggregateByCustomerInBranchByMonth(filteredRows, monthList, branchName);
     if (!thirdName)  return aggregateByOrdererForCustomerByMonth(filteredRows, monthList, branchName, secondName);
-    return excludeKO(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first'));
+    return excludeHiddenProductRows(aggregateByProductByMonth(filteredRows, monthList, branchName, secondName, thirdName, 'customer_first'));
   }, [filteredRows, months, activeView, hierarchyOrder, customerViewMode, allModeBranches]);
 
   // テーブルデータ変更時：チェックを全選択に初期化
@@ -454,8 +449,10 @@ const App = () => {
       const headers = ['リース会社', '部店', '担当者', 'ユーザー', '品番', '受注年月', '売上', '粗利'];
 
       // (leaseCompany, branch, ordererName, customerName, productCode, yearMonth) でグループ化
+      // 品番列を出すため K-O / N- 始まりは従来どおり行として除外（金額は部店集計等に含まれる）
       const map = {};
       filteredRows.forEach(r => {
+        if (hideProductCodeInDetail(r.productCode)) return;
         if (!r.calendarYear || !r.month) return;
         const ym = `${r.calendarYear}年${r.month}月`;
         const key = [r.leaseCompany, r.branch, r.ordererName, r.customerName, r.productCode, ym].join('|');
@@ -1671,6 +1668,7 @@ const ProductSearchView = ({ rows }) => {
     statusFilteredRows.forEach(r => {
       if (r.productCode == null) return;
       const code = r.productCode.toString();
+      if (hideProductCodeInDetail(code)) return;
       if (!map[code]) map[code] = { code, name: r.productName || '', total: 0 };
       map[code].total += Number(r.quantity) || 0;
     });

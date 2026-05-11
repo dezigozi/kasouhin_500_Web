@@ -4,6 +4,15 @@
  */
 
 /**
+ * 品番を行として表示する画面（品番別ドリルダウン・ダッシュボードCSV等）では非表示にするコード。
+ * 部店・担当・顧客など品番を出さない集計には含める（マスタ売上合計と整合）。
+ */
+export function hideProductCodeInDetail(code) {
+  const c = String(code ?? '');
+  return c.startsWith('K-O') || c.startsWith('N-');
+}
+
+/**
  * 受注件数カウントヘルパー
  * documentNumber があればユニーク伝票数、なければ行数をカウント
  */
