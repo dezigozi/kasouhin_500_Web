@@ -56,11 +56,11 @@ const HEADER_MAP = {
   'profit':               'profit',
   // date
   '受注日':               'date',
-  '納車日':               'date',
   '日付':                 'date',
   '年月日':               'date',
   'date':                 'date',
   // deliverydate（納車年月日）
+  '納車日':               'deliverydate',
   '納車年月':             'deliverydate',
   '納車年月日':           'deliverydate',
   'deliverydate':         'deliverydate',
