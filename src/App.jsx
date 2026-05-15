@@ -1434,8 +1434,8 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
       </div>
     </div>
 
-    <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-      <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+    <div className="bg-white/80 rounded-[3rem] shadow-2xl shadow-red-200/50 border border-red-100 overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
+      <div className="p-8 border-b border-red-50 bg-red-50/30 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-red-600 text-white rounded-xl shadow-lg shadow-red-100"><ListFilter size={20} /></div>
           <div>
@@ -1461,7 +1461,7 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
       </div>
 
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full text-left border-collapse pivot-table">
+        <table className="w-full text-left border-collapse pivot-table bg-gradient-to-br from-red-50/20 to-white/50">
           <thead className="sticky top-0 z-20">
             <tr className="bg-slate-900 text-xl font-black text-white tracking-wide text-center">
               <th className="px-4 py-4 text-center border-r border-slate-800 min-w-[110px] sticky left-0 bg-slate-900 z-10">
