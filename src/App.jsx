@@ -879,6 +879,11 @@ const App = () => {
                       <Search size={16} />
                     </button>
                   </div>
+                  {hierarchyOrder !== 'customer_first' && (
+                    <div className="text-xs text-red-600 font-bold ml-2">
+                      ※ 部署→顧客→担当者 に合わせてから検索を行ってください
+                    </div>
+                  )}
                   {isSearchDropdownOpen && customerSearchResults.length > 0 && (
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
                       {customerSearchResults.map((result, idx) => (
@@ -917,6 +922,11 @@ const App = () => {
                       <Search size={16} />
                     </button>
                   </div>
+                  {hierarchyOrder !== 'orderer_first' && (
+                    <div className="text-xs text-red-600 font-bold ml-2">
+                      ※ 部署→担当者→顧客 に合わせてから検索を行ってください
+                    </div>
+                  )}
                   {isOrdererSearchDropdownOpen && ordererSearchResults.length > 0 && (
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
                       {ordererSearchResults.map((result, idx) => (
