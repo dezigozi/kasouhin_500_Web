@@ -1251,6 +1251,32 @@ export function searchCustomers(rows, query) {
 }
 
 /**
+ * 担当者名検索（半角全角対応、部分一致）
+ */
+export function searchOrderers(rows, query) {
+  if (!query || query.trim() === '') return [];
+  const normalized = normalizeJapanese(query.trim());
+  const seen = new Set();
+  const results = [];
+  rows.forEach(row => {
+    if (!row.ordererName) return;
+    const normOrderer = normalizeJapanese(row.ordererName);
+    if (normOrderer.includes(normalized)) {
+      const key = `${row.ordererName}||${row.branch}||${row.leaseCompany}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        results.push({
+          ordererName: row.ordererName,
+          branchName: row.branch || '',
+          leaseCompany: row.leaseCompany || '',
+        });
+      }
+    }
+  });
+  return results;
+}
+
+/**
  * CSVデータ生成
  */
 export function generateCsvContent(pivotData, years) {

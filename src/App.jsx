@@ -16,7 +16,7 @@ import {
   aggregateByCustomerAllByMonth, aggregateByOrdererAllByMonth,
   aggregateByOrdererForCustomerAllByMonth, aggregateByCustomerForOrdererAllByMonth,
   aggregateByProductByMonthNoBranch, aggregateByProductForCustomerAllByMonth, aggregateByProductForOrdererAllByMonth,
-  searchCustomers,
+  searchCustomers, searchOrderers,
   generatePivotDataByMonth, calcYoY, calcMargin, formatCurrencyFull,
   generateCsvContentByMonth,
   hideProductCodeInDetail,
@@ -105,6 +105,9 @@ const App = () => {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerSearchResults, setCustomerSearchResults] = useState([]);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const [ordererSearchQuery, setOrdererSearchQuery] = useState('');
+  const [ordererSearchResults, setOrdererSearchResults] = useState([]);
+  const [isOrdererSearchDropdownOpen, setIsOrdererSearchDropdownOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const printRef = useRef(null);
@@ -525,14 +528,39 @@ const App = () => {
 
   const handleSearchCustomer = useCallback(() => {
     if (!customerSearchQuery.trim()) return;
-    const results = searchCustomers(filteredRows, customerSearchQuery);
+    const results = searchCustomers(rawData?.rows || [], customerSearchQuery);
     if (results.length === 1) {
       handleSelectCustomer(results[0]);
     } else if (results.length > 0) {
       setCustomerSearchResults(results);
       setIsSearchDropdownOpen(true);
     }
-  }, [customerSearchQuery, filteredRows, handleSelectCustomer]);
+  }, [customerSearchQuery, rawData, handleSelectCustomer]);
+
+  const handleSelectOrderer = useCallback((result) => {
+    if (result.branchName && result.ordererName) {
+      setActiveView({
+        branchName: result.branchName,
+        secondName: result.ordererName,
+        thirdName: null,
+      });
+      setSelectedLeaseCo(result.leaseCompany || 'ALL');
+      setOrdererSearchQuery('');
+      setOrdererSearchResults([]);
+      setIsOrdererSearchDropdownOpen(false);
+    }
+  }, []);
+
+  const handleSearchOrderer = useCallback(() => {
+    if (!ordererSearchQuery.trim()) return;
+    const results = searchOrderers(rawData?.rows || [], ordererSearchQuery);
+    if (results.length === 1) {
+      handleSelectOrderer(results[0]);
+    } else if (results.length > 0) {
+      setOrdererSearchResults(results);
+      setIsOrdererSearchDropdownOpen(true);
+    }
+  }, [ordererSearchQuery, rawData, handleSelectOrderer]);
 
 
   // ===== ログイン =====
@@ -867,6 +895,45 @@ const App = () => {
                   ))}
                 </div>
               )}
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">担当者検索</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-blue-500 transition-colors">
+                      <input
+                        type="text"
+                        value={ordererSearchQuery}
+                        onChange={e => setOrdererSearchQuery(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSearchOrderer()}
+                        placeholder="担当者名で検索..."
+                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSearchOrderer}
+                      disabled={!ordererSearchQuery.trim()}
+                      className="p-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:bg-slate-300 transition-colors"
+                    >
+                      <Search size={16} />
+                    </button>
+                  </div>
+                  {isOrdererSearchDropdownOpen && ordererSearchResults.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
+                      {ordererSearchResults.map((result, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectOrderer(result)}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-slate-100 last:border-b-0 transition-colors group"
+                        >
+                          <div className="font-black text-slate-800 text-sm group-hover:text-blue-600">{result.ordererName}</div>
+                          <div className="text-xs text-slate-500 mt-1">
+                            {result.branchName} {result.leaseCompany && `• ${result.leaseCompany}`}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
             </div>
               </>
             )}
