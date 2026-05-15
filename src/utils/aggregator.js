@@ -81,8 +81,9 @@ export function aggregateByBranch(rows, years) {
   });
   finalizeCount(map);
   return Object.values(map).sort((a, b) => {
-    const latestYear = years[years.length - 1];
-    return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
+    const sumA = years.reduce((s, y) => s + (a.sales[y] || 0), 0);
+    const sumB = years.reduce((s, y) => s + (b.sales[y] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -107,8 +108,9 @@ export function aggregateByOrderer(rows, years, branchName) {
   });
   finalizeCount(map);
   return Object.values(map).sort((a, b) => {
-    const latestYear = years[years.length - 1];
-    return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
+    const sumA = years.reduce((s, y) => s + (a.sales[y] || 0), 0);
+    const sumB = years.reduce((s, y) => s + (b.sales[y] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -133,8 +135,9 @@ export function aggregateByCustomer(rows, years, branchName, ordererName) {
   });
   finalizeCount(map);
   return Object.values(map).sort((a, b) => {
-    const latestYear = years[years.length - 1];
-    return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
+    const sumA = years.reduce((s, y) => s + (a.sales[y] || 0), 0);
+    const sumB = years.reduce((s, y) => s + (b.sales[y] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -159,8 +162,9 @@ export function aggregateByCustomerInBranch(rows, years, branchName) {
   });
   finalizeCount(map);
   return Object.values(map).sort((a, b) => {
-    const latestYear = years[years.length - 1];
-    return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
+    const sumA = years.reduce((s, y) => s + (a.sales[y] || 0), 0);
+    const sumB = years.reduce((s, y) => s + (b.sales[y] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -185,8 +189,9 @@ export function aggregateByOrdererForCustomer(rows, years, branchName, customerN
   });
   finalizeCount(map);
   return Object.values(map).sort((a, b) => {
-    const latestYear = years[years.length - 1];
-    return (b.sales[latestYear] || 0) - (a.sales[latestYear] || 0);
+    const sumA = years.reduce((s, y) => s + (a.sales[y] || 0), 0);
+    const sumB = years.reduce((s, y) => s + (b.sales[y] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -370,12 +375,9 @@ export function aggregateByBranchByMonth(rows, months) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -414,12 +416,9 @@ export function aggregateByOrdererByMonth(rows, months, branchName) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -458,12 +457,9 @@ export function aggregateByCustomerByMonth(rows, months, branchName, ordererName
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -504,12 +500,9 @@ export function aggregateByCustomerInBranchByMonth(rows, months, branchName) {
     delete rest.repsSet;
     return { ...rest, count, reps };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -547,12 +540,9 @@ export function aggregateByOrdererForCustomerByMonth(rows, months, branchName, c
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -604,12 +594,9 @@ export function aggregateByProductByMonth(rows, months, branchName, secondName, 
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -655,12 +642,9 @@ export function aggregateByProductForOrdererByMonth(rows, months, branchName, or
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -708,12 +692,9 @@ export function aggregateByProductForCustomerByMonth(rows, months, branchName, c
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -761,12 +742,9 @@ export function aggregateByProductInBranchByMonth(rows, months, branchName) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -806,12 +784,9 @@ export function aggregateByCustomerAllByMonth(rows, months) {
     delete rest.repsSet;
     return { ...rest, count, reps };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -848,12 +823,9 @@ export function aggregateByOrdererAllByMonth(rows, months) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -891,12 +863,9 @@ export function aggregateByOrdererForCustomerAllByMonth(rows, months, customerNa
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -934,12 +903,9 @@ export function aggregateByCustomerForOrdererAllByMonth(rows, months, ordererNam
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -988,12 +954,9 @@ export function aggregateByProductByMonthNoBranch(rows, months, secondName, thir
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -1039,12 +1002,9 @@ export function aggregateByProductForCustomerAllByMonth(rows, months, customerNa
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -1090,12 +1050,9 @@ export function aggregateByProductForOrdererAllByMonth(rows, months, ordererName
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
@@ -1142,12 +1099,9 @@ export function aggregateByProductAllByMonth(rows, months) {
     delete rest.slipSets;
     return { ...rest, count };
   }).sort((a, b) => {
-    if (a.quantity) {
-      const tot = x => months.filter(m => m !== '計').reduce((s, m) => s + (x.quantity[m] || 0), 0);
-      return tot(b) - tot(a);
-    }
-    const latestMonth = months[months.length - 1];
-    return (b.sales[latestMonth] || 0) - (a.sales[latestMonth] || 0);
+    const sumA = months.filter(m => m !== '計').reduce((s, m) => s + (a.sales[m] || 0), 0);
+    const sumB = months.filter(m => m !== '計').reduce((s, m) => s + (b.sales[m] || 0), 0);
+    return sumB - sumA;
   });
 }
 
