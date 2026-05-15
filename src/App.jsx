@@ -861,14 +861,15 @@ const App = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">顧客検索</label>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
+                    <div className={`flex-1 flex items-center border-2 border-transparent rounded-2xl px-4 py-2 transition-colors ${hierarchyOrder === 'customer_first' ? 'bg-white focus-within:border-red-500' : 'bg-slate-100'}`}>
                       <input
                         type="text"
                         value={customerSearchQuery}
                         onChange={e => setCustomerSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearchCustomer()}
                         placeholder="顧客名で検索..."
-                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
+                        disabled={hierarchyOrder !== 'customer_first'}
+                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 disabled:text-slate-400 disabled:cursor-not-allowed"
                       />
                     </div>
                     <button
@@ -904,14 +905,15 @@ const App = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">担当者検索</label>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-blue-500 transition-colors">
+                    <div className={`flex-1 flex items-center border-2 border-transparent rounded-2xl px-4 py-2 transition-colors ${hierarchyOrder === 'orderer_first' ? 'bg-white focus-within:border-blue-500' : 'bg-slate-100'}`}>
                       <input
                         type="text"
                         value={ordererSearchQuery}
                         onChange={e => setOrdererSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearchOrderer()}
                         placeholder="担当者名で検索..."
-                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
+                        disabled={hierarchyOrder !== 'orderer_first'}
+                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 disabled:text-slate-400 disabled:cursor-not-allowed"
                       />
                     </div>
                     <button
