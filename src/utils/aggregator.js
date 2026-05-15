@@ -1195,19 +1195,34 @@ export function formatCurrencyFull(val) {
  * 「たばこ」「タバコ」「ﾀﾊﾞｺ」を統一して比較可能にする
  */
 function normalizeJapanese(str) {
-  return str
+  const hankakuDakuten = {
+    'ｶﾞ': 'ガ', 'ｷﾞ': 'ギ', 'ｸﾞ': 'グ', 'ｹﾞ': 'ゲ', 'ｺﾞ': 'ゴ',
+    'ｻﾞ': 'ザ', 'ｼﾞ': 'ジ', 'ｽﾞ': 'ズ', 'ｾﾞ': 'ゼ', 'ｿﾞ': 'ゾ',
+    'ﾀﾞ': 'ダ', 'ﾁﾞ': 'ヂ', 'ﾂﾞ': 'ヅ', 'ﾃﾞ': 'デ', 'ﾄﾞ': 'ド',
+    'ﾊﾞ': 'バ', 'ﾋﾞ': 'ビ', 'ﾌﾞ': 'ブ', 'ﾍﾞ': 'ベ', 'ﾎﾞ': 'ボ',
+    'ｳﾞ': 'ヴ',
+    'ﾊﾟ': 'パ', 'ﾋﾟ': 'ピ', 'ﾌﾟ': 'プ', 'ﾍﾟ': 'ペ', 'ﾎﾟ': 'ポ',
+  };
+
+  let result = str;
+  for (const [hankaku, zenkaku] of Object.entries(hankakuDakuten)) {
+    result = result.replace(new RegExp(hankaku, 'g'), zenkaku);
+  }
+
+  return result
     // 半角カナ→全角カナ
-    .replace(/[\uff61-\uff9f]/g, ch => {
+    .replace(/[｡-ﾟ]/g, ch => {
       const HKANA = 'ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝﾞﾟ';
       const FKANA = 'ヲァィゥェォャュョッーアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンﾞﾟ';
       const idx = HKANA.indexOf(ch);
       return idx >= 0 ? FKANA[idx] : ch;
     })
     // ひらがな→カタカナ
-    .replace(/[\u3041-\u3096]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60))
+    .replace(/[ぁ-ゖ]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60))
     // 小文字統一
     .toLowerCase();
 }
+
 
 /**
  * 顧客名検索（半角全角対応、部分一致）
