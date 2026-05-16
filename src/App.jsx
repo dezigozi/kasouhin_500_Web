@@ -861,15 +861,15 @@ const App = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">顧客検索</label>
                   <div className="flex items-center gap-2">
-                    <div className={`flex-1 flex items-center border-2 border-transparent rounded-2xl px-4 py-2 transition-colors ${hierarchyOrder === 'customer_first' ? 'bg-white focus-within:border-red-500' : 'bg-slate-100'}`}>
+                    <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-red-500 transition-colors">
                       <input
                         type="text"
                         value={customerSearchQuery}
                         onChange={e => setCustomerSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearchCustomer()}
+                        onFocus={() => setHierarchyOrder('customer_first')}
                         placeholder="顧客名で検索..."
-                        disabled={hierarchyOrder !== 'customer_first'}
-                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
                       />
                     </div>
                     <button
@@ -879,11 +879,6 @@ const App = () => {
                     >
                       <Search size={16} />
                     </button>
-                    {hierarchyOrder !== 'customer_first' && (
-                      <div className="text-sm text-red-600 font-black">
-                        ※ 部署→顧客→担当者 に合わせてから検索を行ってください
-                      </div>
-                    )}
                   </div>
                   {isSearchDropdownOpen && customerSearchResults.length > 0 && (
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
@@ -905,15 +900,15 @@ const App = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">担当者検索</label>
                   <div className="flex items-center gap-2">
-                    <div className={`flex-1 flex items-center border-2 border-transparent rounded-2xl px-4 py-2 transition-colors ${hierarchyOrder === 'orderer_first' ? 'bg-white focus-within:border-blue-500' : 'bg-slate-100'}`}>
+                    <div className="flex-1 flex items-center bg-white border-2 border-transparent rounded-2xl px-4 py-2 focus-within:border-blue-500 transition-colors">
                       <input
                         type="text"
                         value={ordererSearchQuery}
                         onChange={e => setOrdererSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearchOrderer()}
+                        onFocus={() => setHierarchyOrder('orderer_first')}
                         placeholder="担当者名で検索..."
-                        disabled={hierarchyOrder !== 'orderer_first'}
-                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400"
                       />
                     </div>
                     <button
@@ -923,11 +918,6 @@ const App = () => {
                     >
                       <Search size={16} />
                     </button>
-                    {hierarchyOrder !== 'orderer_first' && (
-                      <div className="text-sm text-red-600 font-black">
-                        ※ 担当者名の検索は、下記を部署→担当者→顧客 に合わせてから検索を行ってください
-                      </div>
-                    )}
                   </div>
                   {isOrdererSearchDropdownOpen && ordererSearchResults.length > 0 && (
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-lg z-50 max-h-64 overflow-y-auto">
