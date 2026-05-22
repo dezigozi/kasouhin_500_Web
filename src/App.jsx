@@ -131,7 +131,9 @@ const App = () => {
         setConnectionStatus('loading');
         setLoadingProgress({ fetchMsg: 'CSVデータを読み込み中...', isSyncing: true });
 
-        const csvData = await loadCsvData();
+        const csvData = await loadCsvData(msg => {
+          setLoadingProgress({ fetchMsg: msg, isSyncing: true });
+        });
         const rows = enrichRowsCalendarYear(csvData.rows || []);
         setRawData({ ...csvData, rows, fromCache: false, cacheAgeMsg: 'CSV' });
         setConnectionStatus('online');
@@ -282,7 +284,13 @@ const App = () => {
   }, []);
 
   // 初回読み込み
-  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // パスワード保護が有効な場合は、認証完了するまで重いCSVダウンロード/パースを開始しない。
+  // タブレット等の非力なデバイスでパスワード画面自体が固まる問題への対処。
+  useEffect(() => {
+    const isPasswordProtected = !!import.meta.env.VITE_PASSWORD;
+    if (isPasswordProtected && !isAuthenticated) return;
+    loadData();
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 階層順変更時：secondName / thirdName をリセット
   useEffect(() => {
