@@ -784,7 +784,7 @@ const App = () => {
       </aside>
 
       {/* ===== Main Content ===== */}
-      <main className="pt-20 min-h-screen px-4 pb-4 md:px-8 md:pb-8 overflow-x-auto overflow-y-auto custom-scrollbar" ref={printRef}>
+      <main className="pt-20 h-screen px-4 pb-4 md:px-8 md:pb-8 overflow-x-auto overflow-y-auto custom-scrollbar" ref={printRef}>
         {/* Header */}
         <header className="mb-6 md:mb-10 space-y-4 md:space-y-8 no-print">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
@@ -1140,9 +1140,54 @@ const DashboardView = ({
   const isCustomerSearchMode = isProductMode && activeView.branchName !== activeView.secondName;
   const isBranchProductMode = isProductMode && activeView.branchName === activeView.secondName;
   const monthCols = useMemo(() => months.filter(m => m !== '計'), [months]);
+
+  // ===== 部署起点モード 第1階層用 検索 =====
+  const [branchSearchQuery, setBranchSearchQuery] = useState('');
+  // ===== 月別ソート =====
+  const [sortMonth, setSortMonth] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
+
+  const isBranchFirstLevel1 = !activeView.branchName && !isProductMode && !isCustomerSearchMode;
+
+  // テーブル表示用データ: 部署検索 + 月別売上ソート
+  const displayData = useMemo(() => {
+    let result = data;
+    if (isBranchFirstLevel1 && branchSearchQuery.trim()) {
+      const q = branchSearchQuery.trim().toLowerCase();
+      result = result.filter(d => String(d.name ?? '').toLowerCase().includes(q));
+    }
+    if (sortMonth && months.includes(sortMonth)) {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      result = [...result].sort((a, b) => {
+        let av, bv;
+        if (sortMonth === '計') {
+          av = monthCols.reduce((s, m) => s + (a.sales?.[m] || 0), 0);
+          bv = monthCols.reduce((s, m) => s + (b.sales?.[m] || 0), 0);
+        } else {
+          av = a.sales?.[sortMonth] || 0;
+          bv = b.sales?.[sortMonth] || 0;
+        }
+        return (av - bv) * dir;
+      });
+    }
+    return result;
+  }, [data, isBranchFirstLevel1, branchSearchQuery, sortMonth, sortDir, months, monthCols]);
+
+  const handleSortMonth = useCallback((month) => {
+    if (sortMonth !== month) {
+      setSortMonth(month);
+      setSortDir('desc');
+    } else if (sortDir === 'desc') {
+      setSortDir('asc');
+    } else {
+      setSortMonth(null);
+      setSortDir('desc');
+    }
+  }, [sortMonth, sortDir]);
+
   const totalRow = useMemo(() => {
-    if (!data.length || !months.length) return null;
-    const filtered = data.filter(item => checkedItems.has(item.name));
+    if (!displayData.length || !months.length) return null;
+    const filtered = displayData.filter(item => checkedItems.has(item.name));
     if (!filtered.length) return null;
     const sales = {}, profit = {}, count = {}, quantity = {};
     months.forEach(m => { sales[m] = 0; profit[m] = 0; count[m] = 0; quantity[m] = 0; });
@@ -1163,7 +1208,7 @@ const DashboardView = ({
     const { branchName, secondName } = activeView;
     const label = !branchName ? '全部店 合計' : !secondName ? `${branchName} 合計` : `${secondName} 合計`;
     return { name: label, sales, profit, count, quantity };
-  }, [data, months, monthCols, activeView, checkedItems]);
+  }, [displayData, months, monthCols, activeView, checkedItems]);
 
   const toggleCheck = useCallback((name) => {
     onCheckedChange(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
@@ -1232,7 +1277,7 @@ const DashboardView = ({
           </button>
         </div>
         <div className="flex items-center gap-2 ml-8">
-          <button onClick={() => onCheckedChange(new Set(data.map(d => d.name)))}
+          <button onClick={() => onCheckedChange(new Set(displayData.map(d => d.name)))}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-transparent text-xs font-black transition-colors">
             <CheckSquare size={14} /> 全チェック
           </button>
@@ -1243,9 +1288,37 @@ const DashboardView = ({
         </div>
       </div>
     )}
+    {/* 部署起点モード 第1階層 専用 部署名検索バー */}
+    {isBranchFirstLevel1 && (
+      <div className="flex flex-wrap items-center gap-3 no-print">
+        <div className="flex-1 min-w-[220px] max-w-sm">
+          <div className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-2xl px-4 py-2.5 focus-within:border-red-500 transition-colors shadow-sm">
+            <Building2 size={15} className="text-red-400 flex-shrink-0" />
+            <input
+              type="text"
+              value={branchSearchQuery}
+              onChange={e => setBranchSearchQuery(e.target.value)}
+              placeholder="部署名で絞り込み..."
+              className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 placeholder-slate-400 min-w-0 font-bold"
+            />
+            {branchSearchQuery && (
+              <button onClick={() => setBranchSearchQuery('')} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+        {branchSearchQuery.trim() && (
+          <div className="text-xs font-black text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl">
+            {displayData.length}件表示中
+          </div>
+        )}
+      </div>
+    )}
+
     {(isCustomerSearchMode || isProductMode) && (
       <div className="flex items-center gap-2 no-print">
-        <button onClick={() => onCheckedChange(new Set(data.map(d => d.name)))}
+        <button onClick={() => onCheckedChange(new Set(displayData.map(d => d.name)))}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-transparent text-xs font-black transition-colors">
           <CheckSquare size={14} /> 全チェック
         </button>
@@ -1257,7 +1330,7 @@ const DashboardView = ({
     )}
 
     {/* Comparison Table */}
-    <div className="bg-white rounded-3xl md:rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+    <div className="bg-white rounded-3xl md:rounded-[3rem] shadow-sm border border-slate-100 overflow-clip">
       <div className="p-4 md:p-8 border-b border-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-slate-50/30">
         <h3 className="font-black text-slate-800 text-base md:text-xl flex items-center gap-2 flex-wrap">
           <SectionIcon className="text-red-500 flex-shrink-0" size={22} />
@@ -1281,18 +1354,35 @@ const DashboardView = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-clip">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-900 text-sm md:text-xl font-black text-white tracking-wide text-center">
-              <th className="px-1 md:px-2 py-3 md:py-4 w-10 md:w-12 text-center">選択</th>
-              <th className="px-3 md:px-8 py-3 md:py-4 min-w-[140px] md:min-w-[200px] text-center">
+              <th className="px-1 md:px-2 py-3 md:py-4 w-10 md:w-12 text-center sticky top-0 z-10 bg-slate-900">選択</th>
+              <th className="px-3 md:px-8 py-3 md:py-4 min-w-[140px] md:min-w-[200px] text-center sticky top-0 z-10 bg-slate-900">
                 {isCustomerSearchMode || isProductMode ? '品番' : levelInfo.label}
                 {amountUnit === 'thousand' && <span className="ml-1 text-amber-400 normal-case tracking-normal text-[10px]">（千円）</span>}
               </th>
-              {months.map(month => (
-                <th key={month} className="px-2 md:px-6 py-3 md:py-4 text-center border-l border-slate-800 min-w-[100px] md:min-w-[auto] whitespace-nowrap">{month}</th>
-              ))}
+              {months.map(month => {
+                const isSorted = sortMonth === month;
+                return (
+                  <th key={month}
+                    onClick={() => handleSortMonth(month)}
+                    title={isSorted ? `${sortDir === 'desc' ? '降順' : '昇順'}（再クリックで切替）` : 'クリックで売上ソート'}
+                    className="px-2 md:px-6 py-3 md:py-4 text-center border-l border-slate-800 min-w-[100px] md:min-w-[auto] whitespace-nowrap sticky top-0 z-10 bg-slate-900 cursor-pointer hover:bg-slate-800 transition-colors select-none">
+                    <div className="flex items-center justify-center gap-1">
+                      <span>{month}</span>
+                      {isSorted ? (
+                        sortDir === 'desc'
+                          ? <ArrowDownRight size={14} className="text-amber-400" />
+                          : <ArrowUpRight size={14} className="text-amber-400" />
+                      ) : (
+                        <ArrowUpDown size={12} className="opacity-30" />
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -1369,10 +1459,10 @@ const DashboardView = ({
                 })}
               </tr>
             )}
-            {data.length === 0 ? (
+            {displayData.length === 0 ? (
               <tr><td colSpan={months.length+2} className="px-4 py-12 text-center text-slate-300 italic">該当するデータがありません</td></tr>
             ) : (
-              data.map((item, idx) => (
+              displayData.map((item, idx) => (
                 <tr key={idx} className={`group hover:bg-red-50/30 transition-all ${!isLeafLevel && !isCustomerSearchMode?'cursor-pointer':''}`} onClick={() => !isLeafLevel && !isCustomerSearchMode && onDrillDown(item)}>
                   <td className="px-1 md:px-2 py-4 w-10 md:w-12 align-middle text-center" onClick={e => e.stopPropagation()}>
                     <button type="button" onClick={() => toggleCheck(item.name)} className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-red-600 transition-colors">
