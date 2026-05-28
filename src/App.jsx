@@ -514,6 +514,24 @@ const App = () => {
     URL.revokeObjectURL(url);
   };
 
+  // トップ（部店別 直近6ヶ月実績）の CSV 出力: 元の master_data.csv をそのまま落とす
+  const handleSaveRawCsv = async () => {
+    try {
+      const res = await fetch('/data/master_data.csv', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `master_data_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('元CSVのダウンロードに失敗:', err);
+      alert('元CSVのダウンロードに失敗したよ〜');
+    }
+  };
+
   const handleSavePdf = () => window.print();
 
   // ===== 顧客検索ハンドラー =====
@@ -990,7 +1008,7 @@ const App = () => {
                 checkedItems={checkedItems} onCheckedChange={setCheckedItems}
                 onDrillDown={handleDrillDown} onBreadcrumb={handleBreadcrumb}
                 onShowProductsDirectly={handleShowProductsDirectly}
-                onSavePdf={handleSavePdf} onSaveCsv={handleSaveCsv}
+                onSavePdf={handleSavePdf} onSaveCsv={handleSaveRawCsv}
                 fmtAmt={fmtAmt} amountUnit={amountUnit}
                 showProfit={showProfit} selectedLeaseCo={selectedLeaseCo}
                 customerViewMode={customerViewMode} onCustomerViewModeChange={setCustomerViewMode}
