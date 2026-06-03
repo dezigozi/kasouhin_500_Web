@@ -23,3 +23,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# local shortcuts / Claude settings (machine-specific, do not track)
+*.lnk
+.claude/
