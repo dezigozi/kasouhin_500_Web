@@ -1,265 +1,76 @@
 # 架装品500受注レポート Web版 — Claude Code 開発ガイド
 
-このファイルは Claude Code が自動的に読み込むプロジェクト設定ファイルです。
-このディレクトリ配下の Webアプリを実装・改修するときの方針をすべて記載しています。
+Claude Code が自動で読むプロジェクト設定。このディレクトリ配下のWebアプリ実装・改修の方針。
+<!-- 共通の技術スタック/デザイン/CSV作法は skill「社内データ可視化アプリ共通規約」に切り出す候補（メンテ実績レポートと共通） -->
 
 ---
 
 ## プロジェクト概要
 
 架装品受注データの可視化・分析 Web アプリ。
-Google Apps Script API または CSV ファイル経由でデータを取得し、
-ブラウザ上でピボット集計・ドリルダウン分析・伝票別利益分析を行う。
+Google Apps Script API または `public/data/master_data.csv` からデータ取得し、
+ブラウザ上でピボット集計・ドリルダウン・伝票別利益分析を行う。
 
-**現在のビュー：**
-- 分析ダッシュボード — 部店別・担当者別・顧客別のドリルダウン分析
-- 一括網羅レポート — ピボットテーブル形式の月別集計
-- 品番検索レポート — 品番検索による納車月別受注数追跡
-- **粗利収支分析** — 伝票（案件）単位での売上・粗利の詳細確認 ⭐ 新機能
+**ビュー一覧:**
+- 分析ダッシュボード（部店別・担当者別・顧客別ドリルダウン）
+- 一括網羅レポート（ピボット形式の月別集計）
+- 品番検索レポート（品番→納車月別受注数）
+- 粗利収支分析（InvoiceReportView。伝票単位の売上・粗利確認）
 
 ---
 
 ## 技術スタック
 
-```
-React 19 + Vite 6 + TailwindCSS 3 + lucide-react
-データソース: Google Apps Script API または public/data/master_data.csv
-デプロイ: Vercel
-ローカルキャッシュ: IndexedDB
-```
+React 19 + Vite 6 + TailwindCSS 3 + lucide-react / データ: GAS API or master_data.csv /
+デプロイ: Vercel / ローカルキャッシュ: IndexedDB
 
 ---
 
-## 粗利収支分析ビュー（InvoiceReportView）の実装ルール
+## 粗利収支分析ビュー（InvoiceReportView）
 
-### 目的
+### 設計意図
+伝票ナンバー（`documentNumber`）単位で売上・粗利を**合算**し、1件の案件として採算を見る。
+1伝票に複数品目行（`productCode` 違い）が含まれるため、合算が必要。
 
-伝票ナンバー（`documentNumber`）を単位として、1件の案件ごとに売上・粗利を確認し、
-利益が取れているかどうかを可視化する。
+### 仕様・ルール（実装コードは App.jsx を参照）
 
-### データ構造
+- **連動フィルター**: リース会社 → 部店 → 担当者 の順に選択肢を絞る。
+  - **GOTCHA** 部店を変えたら担当者を `'ALL'` に自動リセットする（選択肢が変わるため）。
+- **粗利率フィルター**: 上限値入力でそれ以下を表示。
+  - `10`→10%以下 / `0`→赤字のみ / `-1`→大幅赤字のみ / 空欄→無効。売上0は除外。
+- **CSV出力**: 現在のフィルタ・ソート状態のまま出力。
+  - **GOTCHA** Excel文字化け防止で **BOM付きUTF-8**（先頭 `\ufeff`）、改行 `\r\n`、値はダブルクォートエスケープ。
+- **テキスト選択**: セルのダブルクリックで内容を範囲選択（Ctrl+Cコピー用）。
 
-**入力:** `rows` 配列（CSV 由来のレコード）
-- 1 つの伝票に複数の品目行（productCode が異なる行）が含まれる
-
-**出力:** `invoices` 配列（伝票単位に集計）
-```jsx
-{
-  documentNumber: "11271511",        // 伝票番号
-  date: "2026/4/9",                 // 受注日
-  leaseCompany: "NCS",              // リース会社
-  branch: "営業第二部",             // 部店
-  ordererName: "松家",              // 注文者名
-  customerName: "吉林製菓(株)",     // 顧客名
-  sales: 152300,                    // 売上（複数行を合算）
-  profit: 28600,                    // 粗利（複数行を合算）
-}
-```
-
-### 実装のポイント
-
-#### 1. 伝票ナンバーでのグループ化
-
-```jsx
-const invoices = useMemo(() => {
-  const map = {};
-  rows.forEach(r => {
-    const docNum = r.documentNumber || r.Documentnumber || '';
-    if (!docNum) return;
-    if (!map[docNum]) {
-      map[docNum] = {
-        documentNumber: docNum,
-        date: r.date || '',
-        leaseCompany: r.leaseCompany || '',
-        branch: r.branch || '',
-        ordererName: r.ordererName || '',
-        customerName: r.customerName || '',
-        sales: 0,
-        profit: 0,
-      };
-    }
-    map[docNum].sales += Number(r.sales) || 0;
-    map[docNum].profit += Number(r.profit) || 0;
-  });
-  return Object.values(map);
-}, [rows]);
-```
-
-**理由:** 複数の品目行を売上・粗利で合算することで、1件の案件としての採算を把握できる。
-
-#### 2. 連動フィルター機能
-
-```jsx
-// ① リース会社でフィルタ後のデータ
-const invoicesForLease = useMemo(() => {
-  if (filterLease === 'ALL') return invoices;
-  return invoices.filter(inv => inv.leaseCompany === filterLease);
-}, [invoices, filterLease]);
-
-// ② リース会社フィルタ後のデータから支店を抽出
-const branchOptions = useMemo(() => 
-  [...new Set(invoicesForLease.map(i => i.branch).filter(Boolean))].sort(),
-  [invoicesForLease]
-);
-
-// ③ 支店でもフィルタ後のデータから担当者を抽出
-const invoicesForBranch = useMemo(() => {
-  if (filterBranch === 'ALL') return invoicesForLease;
-  return invoicesForLease.filter(inv => inv.branch === filterBranch);
-}, [invoicesForLease, filterBranch]);
-
-const ordererOptions = useMemo(() => 
-  [...new Set(invoicesForBranch.map(i => i.ordererName).filter(Boolean))].sort(),
-  [invoicesForBranch]
-);
-```
-
-**理由:**
-- ユーザーが上層で「NCS」を選択 → 下層には NCS 配下の支店のみ表示
-- UX を向上させるとともに、選択肢を絞ることで操作性を改善
-
-**注意:**
-- 部店を変更するときに担当者を自動リセット（選択肢が変わるため）
-  ```jsx
-  onChange={e => { setFilterBranch(e.target.value); setFilterOrderer('ALL'); }}
-  ```
-
-#### 3. 粗利率フィルター
-
-```jsx
-const filteredInvoices = useMemo(() => {
-  const maxMgn = maxMarginInput !== '' ? parseFloat(maxMarginInput) : null;
-  return invoices.filter(inv => {
-    // ... 他のフィルター処理 ...
-    if (maxMgn !== null) {
-      const mgn = inv.sales > 0 ? (inv.profit / inv.sales) * 100 : null;
-      if (mgn === null || mgn > maxMgn) return false;
-    }
-    return true;
-  });
-}, [invoices, filterLease, filterBranch, filterOrderer, filterCustomer, maxMarginInput]);
-```
-
-**用途:**
-- `10` 入力 → 粗利率 10%以下の案件を表示（低粗利案件の発見）
-- `0` 入力 → 赤字案件のみ表示
-- `-1` 入力 → 大幅赤字案件のみ表示
-
-#### 4. CSV 出力
-
-```jsx
-const handleExportCsv = () => {
-  const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const headers = ['受注日', '伝票ナンバー', 'リース会社', '部店', 
-                   '注文者', '顧客名', '売上金額', '粗利金額', '粗利率(%)'];
-  const lines = [headers.map(q).join(',')];
-  sortedInvoices.forEach(inv => {
-    const dateStr = typeof inv.date === 'string' ? inv.date.split(' ')[0] : inv.date;
-    const mgn = inv.sales > 0 ? ((inv.profit / inv.sales) * 100).toFixed(1) : '';
-    lines.push([
-      q(dateStr), q(inv.documentNumber), q(inv.leaseCompany), q(inv.branch),
-      q(inv.ordererName), q(inv.customerName),
-      Math.round(inv.sales), Math.round(inv.profit), mgn,
-    ].join(','));
-  });
-  const csv = lines.join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  // ... ダウンロード処理 ...
-};
-```
-
-**理由:** 現在のフィルター・ソート状態をそのまま CSV で出力することで、確認した分析結果をそのまま外部に展開できる。
-
-#### 5. テキスト選択機能
-
-```jsx
-const handleCellDoubleClick = (e) => {
-  const selection = window.getSelection();
-  const range = document.createRange();
-  range.selectNodeContents(e.currentTarget);
-  selection.removeAllRanges();
-  selection.addRange(range);
-};
-
-// テーブルセル
-<td className="... select-text cursor-text ..." onDoubleClick={handleCellDoubleClick}>
-  {inv.documentNumber}
-</td>
-```
-
-**理由:** 伝票番号・顧客名をダブルクリックで選択 → Ctrl+C でコピーできる。
-他のシステムへの入力時の利便性を向上。
-
-#### 6. UI・レイアウト
-
-**サマリーカード（4列）:**
-- 伝票件数（赤背景） + 合計売上 + 合計粗利 + 平均粗利率
-- モバイル時は `grid-cols-2` で 2×2 配置
-- デスクトップ時は `grid-cols-4` で 1 行表示
-
-**テーブル：**
-- ヘッダーはスタイク色（濃紺）で固定
-- ソート可能（全カラム）
-- 赤字案件は背景ピンク
-- 粗利率 10%未満はオレンジバッジ
-
-**注意点：**
-- このビュー表示時は「金額単位」「粗利表示」「顧客検索」の設定項目を非表示
-  ```jsx
-  {viewMode !== 'invoice_report' && (
-    // 金額単位・粗利表示・顧客検索のセクション
-  )}
-  ```
+### UI
+- サマリーカード4列（伝票件数=赤 / 合計売上 / 合計粗利 / 平均粗利率）。モバイルは `grid-cols-2`。
+- テーブル: ヘッダー固定（濃紺）、全カラムソート可、赤字案件はピンク背景、粗利率<10%はオレンジバッジ。
+- **YOU MUST** このビュー（`viewMode === 'invoice_report'`）表示時は「金額単位／粗利表示／顧客検索」を非表示にする。
 
 ---
 
-## よくある作業
+## 注意事項（GOTCHA）
 
-### 新しいフィルター項目を追加する
-
-1. `useState` で state を追加
-   ```jsx
-   const [filterXxx, setFilterXxx] = useState('ALL');
-   ```
-
-2. フィルター選択肢を `useMemo` で生成
-3. `filteredInvoices` の filter 関数に条件追加
-4. フィルターバーに UI を追加
-
-### CSV カラムを追加する
-
-1. `handleExportCsv` の `headers` 配列に追加
-2. `lines.push([ ... ])` の対応する値を追加
-3. テーブルのヘッダーと tbody にも列を追加
-
-### ソート機能を追加する
-
-`sortKey` の useMemo 内で `sortedInvoices` をソート。
-各カラムヘッダーに `<SortBtn col="columnName" />` を追加。
+- **CSV列名のゆらぎ**: ヘッダーが `Documentnumber`（大文字N）でも `csvLoader.js` で `documentNumber` にマッピング済み。別名が来たら `invoices` 作成部で対応追加。
+- **パフォーマンス**: データは大規模（数十万行〜）だが、伝票集計後は数千件程度。`useMemo` でムダな再計算を防止。重い変更時は `console.time()` で計測。
 
 ---
 
-## 注意事項
+## よくある作業（手順の要点のみ）
 
-### CSV に伝票番号がない場合
-
-- CSV ヘッダーが `Documentnumber`（大文字 N）の場合、`csvLoader.js` で `documentNumber`（キャメルケース）にマッピング済み
-- 万が一別名の場合は、`invoices` 作成部分で対応を追加する
-
-### パフォーマンス
-
-- 現在データは 60万行規模だが、伝票単位に集計後は数千件程度
-- `useMemo` を活用してムダな再計算を防止
-- 大規模なフィルター追加時は `console.time()` で性能を確認
+- **フィルター追加**: `useState` 追加 → 選択肢を `useMemo` 生成 → `filteredInvoices` に条件追加 → UI追加。
+- **CSVカラム追加**: `handleExportCsv` の `headers` と `lines.push([...])`、テーブルの thead/tbody を揃えて追加。
+- **ソート追加**: `sortedInvoices` の `useMemo` 内で処理し、ヘッダーに `<SortBtn col="..." />` を追加。
 
 ---
 
 ## コマンドリファレンス
 
 ```bash
-npm run dev      # 開発サーバー起動（localhost:5173）
+npm run dev      # 開発サーバー（localhost:5173）
 npm run build    # プロダクションビルド
-npm run preview  # ビルド結果の動作確認
-npm run lint     # ESLint チェック
+npm run preview  # ビルド結果確認
+npm run lint     # ESLint
 ```
 
+<!-- 要検討: フィルタ判定が 'ALL' 文字列。メンテ実績レポートでは Set.size===0 を採用しており方針が逆。統一するか決める -->
