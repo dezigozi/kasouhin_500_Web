@@ -12,8 +12,9 @@ import CsvWorker from './csvWorker.js?worker';
 import { getCache, setCache } from './db.js';
 
 const CSV_URL = '/data/master_data.csv';
-const CACHE_KEY_DATA = 'csv_parsed_v1';
-const CACHE_KEY_ETAG = 'csv_etag_v1';
+// v2: 文字列列を Number 化しないパース仕様に変更（v1 キャッシュは顧客名が数値のままで落ちる）
+const CACHE_KEY_DATA = 'csv_parsed_v2';
+const CACHE_KEY_ETAG = 'csv_etag_v2';
 
 export async function loadCsvData(onProgress) {
   const notify = (msg) => { try { onProgress?.(msg); } catch { /* noop */ } };

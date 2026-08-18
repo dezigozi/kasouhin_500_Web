@@ -91,6 +91,12 @@ function normalizeHeader(raw) {
   return HEADER_MAP[key] || raw.trim();
 }
 
+// 数値化してはいけない文字列列（内部キー）。ここに無い列は従来どおり数値らしければ Number 化する
+const TEXT_KEYS = new Set([
+  'date', 'ordererName', 'car', 'customerName', 'productCode', 'productName',
+  'leaseCompany', 'branch', 'deliverydate',
+]);
+
 export function parseCsv(csv) {
   const lines = csv.trim().split('\n').filter(line => line.trim());
   if (lines.length === 0) {
@@ -111,8 +117,15 @@ export function parseCsv(csv) {
 
     for (let j = 0; j < headers.length; j++) {
       const value = values[j]?.trim() || '';
+      const key = headers[j];
+      if (TEXT_KEYS.has(key)) {
+        // 顧客名などが数字だけの行（例: 顧客名 "6500"）を Number 化すると
+        // 後段の localeCompare 等で落ちるため、文字列列は常に文字列のまま保持する
+        row[key] = value;
+        continue;
+      }
       const numVal = Number(value);
-      row[headers[j]] = isNaN(numVal) || value === '' ? value : numVal;
+      row[key] = isNaN(numVal) || value === '' ? value : numVal;
     }
 
     if (row.date && !row.fiscalYear && !row.month) {
