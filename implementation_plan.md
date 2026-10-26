@@ -240,6 +240,6 @@ Vercel で SPA を正しくホストするための設定。
 
 ## 参照ファイル
 
-- 売上/WEB App.jsx:       E:\Dropbox\...\架装品実績レポート\売上\WEB\src\App.jsx
-- 売上/WEB aggregator.js: E:\Dropbox\...\架装品実績レポート\売上\WEB\src\utils\aggregator.js
-- 売上/WEB csvLoader.js:  E:\Dropbox\...\架装品実績レポート\売上\WEB\src\utils\csvLoader.js
+- 売上/WEB App.jsx:       H:\Dropbox\...\架装品実績レポート\売上\WEB\src\App.jsx
+- 売上/WEB aggregator.js: H:\Dropbox\...\架装品実績レポート\売上\WEB\src\utils\aggregator.js
+- 売上/WEB csvLoader.js:  H:\Dropbox\...\架装品実績レポート\売上\WEB\src\utils\csvLoader.js
