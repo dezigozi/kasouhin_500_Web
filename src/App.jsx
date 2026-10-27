@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getCache, setCache, clearCache } from './utils/db';
 import { loadCsvData } from './utils/csvLoader';
+import { writeReportXlsx } from './utils/reportXlsx';
 import {
   filterRows,
   aggregateByBranchByMonth, aggregateByOrdererByMonth, aggregateByCustomerByMonth,
@@ -1232,6 +1233,43 @@ const DashboardView = ({
     onCheckedChange(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
   }, [onCheckedChange]);
 
+  const tableTitle = isCustomerSearchMode ? `${activeView.secondName} 品番別実績（全担当者合算）` : isBranchProductMode ? `${activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName} 品番別実績（全顧客合算）` : levelInfo.title;
+
+  // PDF と同じ中身（表示中の行＋チェックした行の合計）を Excel に。前月比は「それ以前」と比べない
+  const handleExcel = async () => {
+    const metrics = isProductLevel
+      ? [{ key: 'quantity', label: '数量', kind: 'qty' }]
+      : [
+        { key: 'count', label: '受注件数', kind: 'qty' },
+        { key: 'sales', label: '売上', kind: 'amt' },
+        ...(showProfit ? [{ key: 'profit', label: '粗利', kind: 'amt' }, { key: 'rate', label: '粗利率', kind: 'rate' }] : []),
+      ];
+    try {
+      await writeReportXlsx({
+        fileName: tableTitle,
+        amountUnit,
+        sheets: [{
+          name: 'ダッシュボード',
+          title: `${tableTitle}${selectedLeaseCo !== 'ALL' ? `　${selectedLeaseCo}` : ''}`,
+          labelHeads: isProductLevel ? ['品番', '品名'] : [levelInfo.label],
+          labelWidths: isProductLevel ? [18, 30] : [28],
+          periods: months.map((m, i) => ({ key: m, top: m, sum: m === '計', ratio: m !== '計' && i >= 2 })),
+          ratioLabel: '前月比',
+          metrics,
+          groups: displayData.map(item => ({
+            labels: isProductLevel ? [item.name, item.productName || ''] : [item.name],
+            values: (k, m) => item[k]?.[m] || 0,
+            inTotal: checkedItems.has(item.name),
+          })),
+          total: totalRow ? { labels: isProductLevel ? [totalRow.name, ''] : [totalRow.name] } : null,
+        }],
+      });
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || 'Excelの作成に失敗したよ');
+    }
+  };
+
   return (
   <div className="space-y-4 md:space-y-8 animate-fade-in-up">
     {/* Breadcrumb */}
@@ -1352,7 +1390,7 @@ const DashboardView = ({
       <div className="p-4 md:p-8 border-b border-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-slate-50/30">
         <h3 className="font-black text-slate-800 text-base md:text-xl flex items-center gap-2 flex-wrap">
           <SectionIcon className="text-red-500 flex-shrink-0" size={22} />
-          <span>{isCustomerSearchMode ? `${activeView.secondName} 品番別実績（全担当者合算）` : isBranchProductMode ? `${activeView.branchName === '__ALL__' ? '全部店' : activeView.branchName} 品番別実績（全顧客合算）` : levelInfo.title}</span>
+          <span>{tableTitle}</span>
           {selectedLeaseCo !== 'ALL' && <span className="text-red-500 text-sm">— {selectedLeaseCo}</span>}
           <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg tracking-wider">受注月</span>
         </h3>
@@ -1364,6 +1402,9 @@ const DashboardView = ({
           <div className="flex gap-2 no-print">
             <button onClick={onSavePdf} className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-red-500 hover:border-red-200 transition-all shadow-sm text-xs font-bold">
               <FileText size={14} /> PDF
+            </button>
+            <button onClick={handleExcel} title="PDFと同じ表をExcelで保存" className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-emerald-500 hover:border-emerald-200 transition-all shadow-sm text-xs font-bold">
+              <FileSpreadsheet size={14} /> Excel
             </button>
             <button onClick={onSaveCsv} className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-emerald-500 hover:border-emerald-200 transition-all shadow-sm text-xs font-bold">
               <FileSpreadsheet size={14} /> CSV
@@ -1603,6 +1644,39 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
     });
   }, [data, monthCols]);
 
+  // PDF と同じ中身を Excel に（一括網羅＋リース会社を選んでいるときは注文者別ランキングも別シートで）
+  const handleExcel = async () => {
+    const periods = months.map((m, i) => ({ key: m, top: m, sum: m === '計', ratio: m !== '計' && i >= 2 }));
+    const amt = [
+      { key: 'sales', label: '売上', kind: 'amt' },
+      ...(showProfit ? [{ key: 'profit', label: '粗利', kind: 'amt' }] : []),
+    ];
+    const title = `一括網羅ピボットレポート${titleSuffix ? `　${titleSuffix}` : ''}`;
+    const sheets = [{
+      name: '一括網羅', title,
+      labelHeads: ['リース会社', '部店', '注文者', '顧客名'], labelWidths: [12, 16, 14, 28],
+      periods, ratioLabel: '前月比',
+      metrics: showProfit ? [...amt, { key: 'rate', label: '粗利率', kind: 'rate' }] : amt,
+      groups: data.map(row => ({ labels: [row.lease, row.branch, row.orderer, row.customer], values: (k, m) => row[k]?.[m] || 0 })),
+      total: { labels: ['合計', '', '', ''] },
+    }];
+    if (selectedLeaseCo !== 'ALL' && ordererSummary.length > 0) {
+      sheets.push({
+        name: '注文者別ランキング', title: `注文者別 受注金額ランキング　${selectedLeaseCo}`,
+        labelHeads: ['順位', '注文者'], labelWidths: [6, 18],
+        periods, ratioLabel: '前月比', metrics: amt,
+        groups: ordererSummary.map((row, i) => ({ labels: [String(i + 1), row.orderer], values: (k, m) => row[k]?.[m] || 0 })),
+        total: { labels: ['合計', ''] },
+      });
+    }
+    try {
+      await writeReportXlsx({ fileName: '一括網羅レポート', amountUnit, sheets });
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || 'Excelの作成に失敗したよ');
+    }
+  };
+
   return (
   <div className="space-y-8 animate-fade-in-up">
     <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-slate-100 no-print">
@@ -1640,6 +1714,7 @@ const PivotView = ({ data, months, branches, pivotBranch, onBranchChange, pivotS
           </div>
           <div className="flex gap-2 no-print">
             <button onClick={onSavePdf} className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-red-500 hover:border-red-200 transition-all shadow-sm text-sm font-bold"><FileText size={16} /> PDF</button>
+            <button onClick={handleExcel} title="PDFと同じ表をExcelで保存" className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-emerald-500 hover:border-emerald-200 transition-all shadow-sm text-sm font-bold"><FileSpreadsheet size={16} /> Excel</button>
             <button onClick={onSaveCsv} className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-emerald-500 hover:border-emerald-200 transition-all shadow-sm text-sm font-bold"><FileSpreadsheet size={16} /> CSV</button>
           </div>
         </div>
